@@ -37,14 +37,25 @@ namespace vaccine {
 
 }
 
-extern "C" void qt_addObject(QObject *obj)
-{
-  printf("QObject added\n");
+void QObject::setObjectName(const QString & name ) {
+  typedef void (*f_setObjectName)(void * dis, const QString & name);
+  static f_setObjectName origMethod = 0;
 
-  // From GammaRay
-  static void (*next_qt_addObject)(QObject *obj)
-    = (void (*)(QObject *obj))dlsym(RTLD_NEXT, "qt_addObject");
-  next_qt_addObject(obj);
+  printf("anyad: %s\n", qPrintable(name));
+
+  if (origMethod == 0)
+  {
+    void *tmpPtr = dlsym(RTLD_NEXT, "_ZN7QObject13setObjectNameERK7QString");
+ 
+    if (tmpPtr)
+      memcpy(&origMethod, &tmpPtr, sizeof(void *));
+    else
+      printf("BAJ VAN\n");
+  }
+ 
+  // here we call the original method
+  if (origMethod)
+    (*origMethod)(this,name);
 }
 
 #endif // HAVE QT5CORE && QT5WIDGES
