@@ -16,6 +16,7 @@ set(CMAKE_AUTOMOC ON)
 find_package(Qt5Core)
 find_package(Qt5Widgets)
 
-CONFIGURE_FILE(config.h.in config.h)
+configure_file(config.h.in config.h)
 
+enable_testing()
 add_subdirectory(vaccine)

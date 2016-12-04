@@ -1,3 +1,5 @@
+#include "../../config.h"
+
 #ifdef MG_MODULE_LINES
 #line 1 "mongoose/src/common.h"
 #endif

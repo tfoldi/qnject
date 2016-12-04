@@ -2,30 +2,27 @@
 #include <unistd.h>
 #include <thread>
 
-// shutdown flag for the service thread
-extern bool vaccine_shutdown;
-
-extern void start_thread(); 
+#include "../vaccine.h"
 
 // standard thread handler
-std::thread * service_thread;
+static std::thread * service_thread;
 
 // fwd decl
 void start_thread();
 
 // Initializer.
 __attribute__((constructor))
-  static void initializer(void) {  
+  static void initializer(void) {
     printf("[%s] Starting service thread\n", __FILE__);
-    vaccine_shutdown = false;
-    service_thread = new std::thread( start_thread );
+    vaccine::shutdown = false;
+    service_thread = new std::thread( vaccine::start_thread );
   }
 
 // Finalizer.
 __attribute__((destructor))
-  static void finalizer(void) {                               // 3
+  static void finalizer(void) {
     printf("[%s] stopping service thread()\n", __FILE__);
-    vaccine_shutdown = true;
+    vaccine::shutdown = true;
     service_thread->join();
     delete service_thread;
   }
