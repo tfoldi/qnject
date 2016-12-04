@@ -4,6 +4,7 @@
 #include <map>
 
 #include "../deps/mongoose/mongoose.h"
+#include "../deps/json/json.hpp"
 
 #include "vaccine.h"
 
@@ -23,6 +24,13 @@ namespace vaccine {
 
   static int has_prefix(const struct mg_str *uri, const struct mg_str *prefix) {
     return uri->len > prefix->len && memcmp(uri->p, prefix->p, prefix->len) == 0;
+  }
+
+  void send_json(struct mg_connection *nc, nlohmann::json & j) {
+    std::string d = j.dump();
+
+    mg_send_head(nc, 200, d.length(), "Content-Type: application/json");
+    mg_send(nc,d.c_str(),d.length());
   }
 
   static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {

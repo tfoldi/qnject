@@ -2,6 +2,7 @@
 
 #include <string>
 #include "../deps/mongoose/mongoose.h"
+#include "../deps/json/json.hpp"
 
 namespace vaccine {
 
@@ -20,6 +21,7 @@ namespace vaccine {
   
   void register_callback(std::string handler, t_vaccine_api_handler function);
 
+  void send_json(struct mg_connection *nc, nlohmann::json & j);
 };
 
 
