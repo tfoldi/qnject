@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 2.8.11)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_MACOSX_RPATH 1) 
 
+# Allow double colon in library iports
+cmake_policy(SET CMP0028 OLD)
+
 project(qnject)
 
 # Find includes in corresponding build directories
@@ -13,6 +16,6 @@ set(CMAKE_AUTOMOC ON)
 find_package(Qt5Core)
 find_package(Qt5Widgets)
 
-add_subdirectory(inject/lib_preload)
+CONFIGURE_FILE(config.h.in config.h)
 
-
+add_subdirectory(vaccine)
