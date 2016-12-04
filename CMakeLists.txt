@@ -13,7 +13,6 @@ set(CMAKE_AUTOMOC ON)
 find_package(Qt5Core)
 find_package(Qt5Widgets)
 
-add_library(qnject SHARED dyld_insert.cpp)
+add_subdirectory(inject/lib_preload)
 
-target_link_libraries(qnject Qt5::Core Qt5::Widgets)
 
