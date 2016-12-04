@@ -38,7 +38,7 @@ namespace vaccine {
 }
 
 void QObject::setObjectName(const QString & name ) {
-  typedef void (*f_setObjectName)(void * dis, const QString & name);
+  typedef void (QObject::*f_setObjectName)(const QString & name);
   static f_setObjectName origMethod = 0;
 
   printf("anyad: %s\n", qPrintable(name));
@@ -55,7 +55,30 @@ void QObject::setObjectName(const QString & name ) {
  
   // here we call the original method
   if (origMethod)
-    (*origMethod)(this,name);
+    (this->*origMethod)(name);
 }
+
+#if 0
+QObject::~QObject() {
+  typedef void (QObject::*f_destructor)();
+  static f_destructor origMethod = 0;
+
+  printf("elment: %s\n", qPrintable(this->objectName()));
+
+  if (origMethod == 0)
+  {
+    void *tmpPtr = dlsym(RTLD_NEXT, "_ZN7QObjectD1Ev");
+ 
+    if (tmpPtr)
+      memcpy(&origMethod, &tmpPtr, sizeof(void *));
+    else
+      printf("BAJ VAN\n");
+  }
+ 
+  // here we call the original method
+  if (origMethod)
+    (this->*origMethod)();
+}
+#endif
 
 #endif // HAVE QT5CORE && QT5WIDGES
