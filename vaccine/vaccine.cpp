@@ -47,7 +47,7 @@ namespace vaccine {
             mg_http_send_error(nc, 404, "Handler not registred");
         } else {
           // static web shit
-          mg_serve_http(nc, hm, s_http_server_opts); /* Serve static content */
+          mg_serve_http(nc, hm, s_http_server_opts); 
         }
         break;
       default:

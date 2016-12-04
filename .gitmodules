@@ -1,3 +1,0 @@
-[submodule "deps/json11"]
-	path = deps/json11
-	url = https://github.com/dropbox/json11
