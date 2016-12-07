@@ -9,14 +9,12 @@
 #include <QObject>
 #include <QWidget>
 #include <QWindow>
+#include <QBuffer>
+#include <QByteArray>
 
 #include "../deps/json/json.hpp"
 
 namespace vaccine {
-
-#ifdef WITH_QT_STALKER
-  static std::map<std::string,void *> s_qobject_map;
-#endif
 
   void qobject_handler( 
       std::string & uri, 
@@ -24,87 +22,76 @@ namespace vaccine {
       void *ev_data,            
       struct http_message *hm)
   {
-    nlohmann::json resp;
-    char buf[140];
+    nlohmann::json resp, req;
 
-    sprintf(buf,"qApp:%p",qApp);
-
-    resp["qApp"] = buf;
-    resp["appName"] = qPrintable(QApplication::applicationName());
-    
-    for( QObject * child : qApp->findChildren<QObject *>() )
-      resp["child"].push_back( qPrintable(child->objectName()) );
-
-    for( QObject * child : qApp->allWidgets() ) {
-      if (child && child->objectName() != "")  {
-        resp["widgets"].push_back( qPrintable(child->objectName()) );
-        if ( child->objectName() == "m_edtExplicitPassword" ) {
-          child->setProperty("text", QVariant("1234"));
-        }
+    // get request data
+    if ( hm->body.len > 0 ) {
+      std::string s;
+      s.assign(hm->body.p, hm->body.len);
+      try {
+        req = nlohmann::json::parse(s);
+      } catch (std::exception & ex ) {
+        printf("Request body: %s\n", ex.what());
       }
     }
 
-    for( QWindow * child : qApp->allWindows() ) {
-      resp["windows"].push_back( qPrintable(child->objectName()) );
+    if ( uri == "qobject" || uri == "qobject/list" ) {
+      char buf[40];
+      sprintf(buf,"qApp:%p",qApp);
 
-      for( QObject * obj : child->findChildren<QObject *>() )
-        resp["windows"][qPrintable(child->objectName())].push_back( qPrintable(obj->objectName()) );
+      resp["uri"] = uri;
+      resp["qApp"] = buf;
+      resp["appName"] = qPrintable(QApplication::applicationName());
+
+      // All widgets
+      for( QWidget * child : qApp->allWidgets() ) {
+        if (child && child->objectName() != "")  {
+          resp["widgets"].push_back( qPrintable(child->objectName()) );
+        }
+      }
+
+      // Windows and their children
+      for( QWindow * child : qApp->allWindows() ) {
+        resp["windows"].push_back( qPrintable(child->objectName()) );
+
+        for( QObject * obj : child->findChildren<QObject *>() )
+          resp["windows"][qPrintable(child->objectName())].push_back( qPrintable(obj->objectName()) );
+      }
+    } else if (uri == "qobject/setProperty") {
+      for( QWidget * child : qApp->allWidgets() ) {
+        if (child && child->objectName() == req["object"].get<std::string>().c_str() ) {
+          child->setProperty( req["name"].get<std::string>().c_str(), req["value"].get<std::string>().c_str());
+          resp[ "setProperty" ] = "success";
+          break;
+        }
+      }
+    } else if (uri == "qobject/grab") {
+      for( QWidget * child : qApp->allWidgets() ) {
+        if (child && child->objectName() == "mainFrame" ) {
+          QByteArray bytes;
+          QBuffer buffer(&bytes);
+          buffer.open(QIODevice::WriteOnly);
+          child->grab().save(&buffer, "PNG"); 
+
+          mg_send_head(nc, 200, bytes.length(), "Content-Type: image/png");
+          mg_send(nc, bytes.constData() ,bytes.length());          
+
+          return;
+        }
+      }
+    } else {
+      mg_http_send_error(nc, 404, "Method not found");
     }
-
 
     send_json(nc,resp);
   }
 
   __attribute__((constructor))
     static void initializer(void) {
-        printf("[%s] Register qobject service\n", __FILE__);
+      printf("[%s] Register qobject service\n", __FILE__);
       vaccine::register_callback("qobject", qobject_handler);
     }
 
 }
-
-#ifdef WITH_QT_STALKER
-void QObject::setObjectName(const QString & name ) {
-  typedef void (QObject::*f_setObjectName)(const QString & name);
-  static f_setObjectName origMethod = 0;
-
-  printf("Register object: %p %s\n", &name, qPrintable(name));
-
-  if (origMethod == 0)
-  {
-    void *tmpPtr = dlsym(RTLD_NEXT, "_ZN7QObject13setObjectNameERK7QString");
- 
-    if (tmpPtr)
-      memcpy(&origMethod, &tmpPtr, sizeof(void *));
-    else
-      printf("BAJ VAN\n");
-  }
- 
-  // here we call the original method
-  if (origMethod)
-    (this->*origMethod)(name);
-}
-
-QObject::~QObject() {
-  typedef void (QObject::*f_destructor)();
-  static f_destructor origMethod = 0;
-
-  printf("elment: %s (%p)\n", qPrintable(this->objectName()), this);
-
-  if (origMethod == 0)
-  {
-    void *tmpPtr = dlsym(RTLD_NEXT, "_ZN7QObjectD0Ev");
- 
-    if (tmpPtr)
-      memcpy(&origMethod, &tmpPtr, sizeof(void *));
-    else
-      printf("BAJ VAN\n");
-  }
- 
-  // here we call the original method
-  if (origMethod)
-    (this->*origMethod)();
-}
-#endif // WITH_QT_STALKER
 
 #endif // HAVE QT5CORE && QT5WIDGES

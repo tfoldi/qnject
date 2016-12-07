@@ -26,6 +26,19 @@ namespace vaccine {
     return uri->len > prefix->len && memcmp(uri->p, prefix->p, prefix->len) == 0;
   }
 
+  std::string get_until_char(std::string const& s, char c)
+  {
+    std::string::size_type pos = s.find(c);
+    if (pos != std::string::npos)
+    {
+      return s.substr(0, pos);
+    }
+    else
+    {
+      return s;
+    }
+  }
+
   void send_json(struct mg_connection *nc, nlohmann::json & j) {
     std::string d = j.dump();
 
@@ -37,20 +50,27 @@ namespace vaccine {
     struct http_message *hm = (struct http_message *) ev_data;
     static const struct mg_str api_prefix = MG_MK_STR("/api/");
 
-    std::string uri("nil");
 
 
     switch (ev) {
       case MG_EV_HTTP_REQUEST:
         if (has_prefix(&hm->uri, &api_prefix) && hm->uri.len - api_prefix.len > 0) {
           // API request
+          std::string uri,handler;
+
           uri.assign(hm->uri.p + api_prefix.len, hm->uri.len - api_prefix.len);
+          handler = get_until_char(uri,'/');
          
           // call registred handler
           printf("Request is %s\n", uri.c_str() );
 
-          if ( s_uri_handlers.count(uri) == 1 )
-            (*s_uri_handlers[uri])(uri,nc,ev_data,hm);
+          if ( s_uri_handlers.count(handler) == 1 ) {
+            try {
+            (*s_uri_handlers[handler])(uri,nc,ev_data,hm);
+            } catch (std::exception & ex) {
+              mg_http_send_error(nc, 500, ex.what() );
+            }
+          }
           else 
             mg_http_send_error(nc, 404, "Handler not registred");
         } else {
