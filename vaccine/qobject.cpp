@@ -11,10 +11,24 @@
 #include <QWindow>
 #include <QBuffer>
 #include <QByteArray>
+#include <QMetaObject>
+#include <QMetaProperty>
 
 #include "../deps/json/json.hpp"
 
 namespace vaccine {
+
+  template<typename Functor>
+    void with_object(nlohmann::json & req, Functor functor)
+    {
+      for( QWidget * child : qApp->allWidgets() ) {
+        if (child && child->objectName() == req["object"].get<std::string>().c_str() ) {
+          functor(child);
+          break;
+        }
+      }
+    }
+
 
   void qobject_handler( 
       std::string & uri, 
@@ -35,6 +49,7 @@ namespace vaccine {
       }
     }
 
+    // XXX: PLEASE REFACTOR ME!!!!!!!!! PLEEEEASEEEE
     if ( uri == "qobject" || uri == "qobject/list" ) {
       char buf[40];
       sprintf(buf,"qApp:%p",qApp);
@@ -57,6 +72,37 @@ namespace vaccine {
         for( QObject * obj : child->findChildren<QObject *>() )
           resp["windows"][qPrintable(child->objectName())].push_back( qPrintable(obj->objectName()) );
       }
+    } else if (uri == "qobject/getProperties") {
+      resp[ "getProperties" ] = "object not found";
+      for( QWidget * child : qApp->allWidgets() ) {
+        if (child && child->objectName() == req["object"].get<std::string>().c_str() ) {
+          resp[ "getProperties" ] = "success";
+          const QMetaObject* metaObject = child->metaObject();
+
+          for(auto i = 0; i < metaObject->propertyCount(); ++i) {
+            const char * propertyName = metaObject->property(i).name();
+            QVariant val = metaObject->property(i).read( child );
+            resp[ "properties" ].push_back( { propertyName, qPrintable(val.toString()) } );
+          }
+
+          for (auto qbaPropertyName : child->dynamicPropertyNames() ) {
+            auto propertyName = qbaPropertyName.constData();
+            QVariant val = child->property( propertyName );
+            resp[ "properties" ].push_back( { propertyName, qPrintable(val.toString()) } );
+          }
+          break;
+        }
+      }
+    } else if (uri == "qobject/getProperty") {
+      resp[ "getProperty" ] = "object not found";
+      for( QWidget * child : qApp->allWidgets() ) {
+        if (child && child->objectName() == req["object"].get<std::string>().c_str() ) {
+          QVariant val = child->property( req["name"].get<std::string>().c_str() );
+          resp[ "getProperty" ] = "success";
+          resp[ "name" ] = qPrintable(val.toString()) ;
+          break;
+        }
+      }
     } else if (uri == "qobject/setProperty") {
       for( QWidget * child : qApp->allWidgets() ) {
         if (child && child->objectName() == req["object"].get<std::string>().c_str() ) {
@@ -67,7 +113,7 @@ namespace vaccine {
       }
     } else if (uri == "qobject/grab") {
       for( QWidget * child : qApp->allWidgets() ) {
-        if (child && child->objectName() == "mainFrame" ) {
+        if (child && child->objectName() == req["object"].get<std::string>().c_str() ) {
           QByteArray bytes;
           QBuffer buffer(&bytes);
           buffer.open(QIODevice::WriteOnly);
@@ -79,6 +125,7 @@ namespace vaccine {
           return;
         }
       }
+      mg_http_send_error(nc, 404, "Widget not found");
     } else {
       mg_http_send_error(nc, 404, "Method not found");
     }
