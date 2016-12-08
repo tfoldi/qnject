@@ -19,16 +19,34 @@
 namespace vaccine {
 
   template<typename Functor>
-    void with_object(nlohmann::json & req, Functor functor)
+    bool with_object(nlohmann::json & req, nlohmann::json & resp, Functor functor)
     {
+      resp["error"] = "object not found";
+
       for( QWidget * child : qApp->allWidgets() ) {
         if (child && child->objectName() == req["object"].get<std::string>().c_str() ) {
+          resp["error"] = "";
+
           functor(child);
-          break;
+          return true;
         }
       }
+      return false;
     }
 
+  // XXX: this should go to vaccine.cpp or .h? or request_utils?
+  void parse_request_body(struct http_message *hm, nlohmann::json & req)
+  {
+    if ( hm->body.len > 0 ) {
+      std::string s;
+      s.assign(hm->body.p, hm->body.len);
+      try {
+        req = nlohmann::json::parse(s);
+      } catch (std::exception & ex ) {
+        printf("Request body: %s\n", ex.what());
+      }
+    }
+  }
 
   void qobject_handler( 
       std::string & uri, 
@@ -39,17 +57,10 @@ namespace vaccine {
     nlohmann::json resp, req;
 
     // get request data
-    if ( hm->body.len > 0 ) {
-      std::string s;
-      s.assign(hm->body.p, hm->body.len);
-      try {
-        req = nlohmann::json::parse(s);
-      } catch (std::exception & ex ) {
-        printf("Request body: %s\n", ex.what());
-      }
-    }
+    parse_request_body(hm,req);
 
-    // XXX: PLEASE REFACTOR ME!!!!!!!!! PLEEEEASEEEE
+    // URI handlers in a big fat branch
+    // 
     if ( uri == "qobject" || uri == "qobject/list" ) {
       char buf[40];
       sprintf(buf,"qApp:%p",qApp);
@@ -65,7 +76,7 @@ namespace vaccine {
         }
       }
 
-      // Windows and their children
+      // Windows and their children - do I need them?
       for( QWindow * child : qApp->allWindows() ) {
         resp["windows"].push_back( qPrintable(child->objectName()) );
 
@@ -73,61 +84,50 @@ namespace vaccine {
           resp["windows"][qPrintable(child->objectName())].push_back( qPrintable(obj->objectName()) );
       }
     } else if (uri == "qobject/getProperties") {
-      resp[ "getProperties" ] = "object not found";
-      for( QWidget * child : qApp->allWidgets() ) {
-        if (child && child->objectName() == req["object"].get<std::string>().c_str() ) {
-          resp[ "getProperties" ] = "success";
-          const QMetaObject* metaObject = child->metaObject();
+      with_object(req, resp, [&](QObject * obj) {
+          const QMetaObject* metaObject = obj->metaObject();
 
           for(auto i = 0; i < metaObject->propertyCount(); ++i) {
             const char * propertyName = metaObject->property(i).name();
-            QVariant val = metaObject->property(i).read( child );
-            resp[ "properties" ].push_back( { propertyName, qPrintable(val.toString()) } );
+            QVariant val = metaObject->property(i).read( obj );
+            resp[ "properties" ].push_back( { propertyName, qPrintable(val.toString()), "meta" } );
           }
 
-          for (auto qbaPropertyName : child->dynamicPropertyNames() ) {
+          for (auto qbaPropertyName : obj->dynamicPropertyNames() ) {
             auto propertyName = qbaPropertyName.constData();
-            QVariant val = child->property( propertyName );
-            resp[ "properties" ].push_back( { propertyName, qPrintable(val.toString()) } );
+            QVariant val = obj->property( propertyName );
+            resp[ "properties" ].push_back( { propertyName, qPrintable(val.toString()), "dynamic" } );
           }
-          break;
-        }
-      }
+        });
     } else if (uri == "qobject/getProperty") {
-      resp[ "getProperty" ] = "object not found";
-      for( QWidget * child : qApp->allWidgets() ) {
-        if (child && child->objectName() == req["object"].get<std::string>().c_str() ) {
-          QVariant val = child->property( req["name"].get<std::string>().c_str() );
-          resp[ "getProperty" ] = "success";
+      with_object(req, resp, [&](QObject * obj) {
+          QVariant val = obj->property( req["name"].get<std::string>().c_str() );
           resp[ "name" ] = qPrintable(val.toString()) ;
-          break;
-        }
-      }
+          });
     } else if (uri == "qobject/setProperty") {
-      for( QWidget * child : qApp->allWidgets() ) {
-        if (child && child->objectName() == req["object"].get<std::string>().c_str() ) {
-          child->setProperty( req["name"].get<std::string>().c_str(), req["value"].get<std::string>().c_str());
-          resp[ "setProperty" ] = "success";
-          break;
-        }
-      }
+      with_object(req, resp, [&](QObject * obj) {
+          obj->setProperty( req["name"].get<std::string>().c_str(), req["value"].get<std::string>().c_str());
+          });
     } else if (uri == "qobject/grab") {
-      for( QWidget * child : qApp->allWidgets() ) {
-        if (child && child->objectName() == req["object"].get<std::string>().c_str() ) {
+      // check if we found our widget
+      if ( ! with_object(req, resp, [&](QWidget * obj) {
           QByteArray bytes;
           QBuffer buffer(&bytes);
           buffer.open(QIODevice::WriteOnly);
-          child->grab().save(&buffer, "PNG"); 
+          obj->grab().save(&buffer, "PNG"); 
 
           mg_send_head(nc, 200, bytes.length(), "Content-Type: image/png");
-          mg_send(nc, bytes.constData() ,bytes.length());          
-
-          return;
-        }
+          mg_send(nc, bytes.constData() ,bytes.length());
+          })) 
+      {
+        // we didn't find widget like this
+        mg_http_send_error(nc, 404, "Widget not found");
+        return;
       }
-      mg_http_send_error(nc, 404, "Widget not found");
+
     } else {
       mg_http_send_error(nc, 404, "Method not found");
+      return;
     }
 
     send_json(nc,resp);
