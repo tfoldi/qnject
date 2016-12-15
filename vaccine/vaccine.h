@@ -21,7 +21,8 @@ namespace vaccine {
   
   void register_callback(std::string handler, t_vaccine_api_handler function);
 
-  void send_json(struct mg_connection *nc, nlohmann::json & j);
-};
+  void parse_request_body(struct http_message *hm, nlohmann::json & req);
 
+  void send_json(struct mg_connection *nc, nlohmann::json & j, int statusCode = 200);
+};
 

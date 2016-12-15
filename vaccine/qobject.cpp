@@ -19,34 +19,18 @@
 namespace vaccine {
 
   template<typename Functor>
-    bool with_object(nlohmann::json & req, nlohmann::json & resp, Functor functor)
+    void with_object(const char * objectName, int & statusCode, Functor functor)
     {
-      resp["error"] = "object not found";
+      statusCode = 404;
 
       for( QWidget * child : qApp->allWidgets() ) {
-        if (child && child->objectName() == req["object"].get<std::string>().c_str() ) {
-          resp["error"] = "";
+        if (child && child->objectName() == objectName ) {
+          statusCode = 200;
 
           functor(child);
-          return true;
         }
       }
-      return false;
     }
-
-  // XXX: this should go to vaccine.cpp or .h? or request_utils?
-  void parse_request_body(struct http_message *hm, nlohmann::json & req)
-  {
-    if ( hm->body.len > 0 ) {
-      std::string s;
-      s.assign(hm->body.p, hm->body.len);
-      try {
-        req = nlohmann::json::parse(s);
-      } catch (std::exception & ex ) {
-        printf("Request body: %s\n", ex.what());
-      }
-    }
-  }
 
   void qobject_handler( 
       std::string & uri, 
@@ -55,9 +39,13 @@ namespace vaccine {
       struct http_message *hm)
   {
     nlohmann::json resp, req;
-
+    int statusCode = 200;
+    const char * objectName = "";
+ 
     // get request data
     parse_request_body(hm,req);
+    if ( req["object"] != nullptr && ! req["object"].empty() )
+      objectName = req["object"].get<std::string>().c_str();
 
     // URI handlers in a big fat branch
     // 
@@ -72,10 +60,19 @@ namespace vaccine {
       // All widgets
       for( QWidget * child : qApp->allWidgets() ) {
         if (child && child->objectName() != "")  {
-          resp["widgets"].push_back( qPrintable(child->objectName()) );
+          resp["widgets"].push_back( 
+              {
+                {"objectName",  qPrintable(child->objectName())},
+                {"parentName", qPrintable(child->parent()->objectName()) },
+                {"obectKind", "widget" },
+                {"className", child->metaObject()->className() },
+                {"superClass", child->metaObject()->superClass()->className() }
+                }
+              );
         }
       }
 
+#if 0
       // Windows and their children - do I need them?
       for( QWindow * child : qApp->allWindows() ) {
         resp["windows"].push_back( qPrintable(child->objectName()) );
@@ -83,8 +80,9 @@ namespace vaccine {
         for( QObject * obj : child->findChildren<QObject *>() )
           resp["windows"][qPrintable(child->objectName())].push_back( qPrintable(obj->objectName()) );
       }
+#endif
     } else if (uri == "qobject/getProperties") {
-      with_object(req, resp, [&](QObject * obj) {
+      with_object(objectName, statusCode, [&](QObject * obj) {
           const QMetaObject* metaObject = obj->metaObject();
 
           for(auto i = 0; i < metaObject->propertyCount(); ++i) {
@@ -100,17 +98,17 @@ namespace vaccine {
           }
         });
     } else if (uri == "qobject/getProperty") {
-      with_object(req, resp, [&](QObject * obj) {
+      with_object(objectName, statusCode, [&](QObject * obj) {
           QVariant val = obj->property( req["name"].get<std::string>().c_str() );
           resp[ "name" ] = qPrintable(val.toString()) ;
           });
     } else if (uri == "qobject/setProperty") {
-      with_object(req, resp, [&](QObject * obj) {
+      with_object(objectName, statusCode, [&](QObject * obj) {
           obj->setProperty( req["name"].get<std::string>().c_str(), req["value"].get<std::string>().c_str());
           });
     } else if (uri == "qobject/grab") {
       // check if we found our widget
-      if ( ! with_object(req, resp, [&](QWidget * obj) {
+      with_object(objectName, statusCode, [&](QWidget * obj) {
           QByteArray bytes;
           QBuffer buffer(&bytes);
           buffer.open(QIODevice::WriteOnly);
@@ -118,19 +116,20 @@ namespace vaccine {
 
           mg_send_head(nc, 200, bytes.length(), "Content-Type: image/png");
           mg_send(nc, bytes.constData() ,bytes.length());
-          })) 
-      {
-        // we didn't find widget like this
-        mg_http_send_error(nc, 404, "Widget not found");
-        return;
-      }
+          });
 
+      if ( statusCode == 200 ) {
+        // we already sent back the reply, nothing to do
+        return;
+      } else {
+        // we didn't find widget like this
+        resp["error"] = "Widget not found";
+      }
     } else {
-      mg_http_send_error(nc, 404, "Method not found");
-      return;
+      resp["error"] = "Method not found";
     }
 
-    send_json(nc,resp);
+    send_json(nc,resp,statusCode);
   }
 
   __attribute__((constructor))

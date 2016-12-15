@@ -39,10 +39,24 @@ namespace vaccine {
     }
   }
 
-  void send_json(struct mg_connection *nc, nlohmann::json & j) {
-    std::string d = j.dump();
+  void parse_request_body(struct http_message *hm, nlohmann::json & req)
+  {
+    if ( hm->body.len > 0 ) {
+      std::string s;
+      s.assign(hm->body.p, hm->body.len);
+      try {
+        req = nlohmann::json::parse(s);
+      } catch (std::exception & ex ) {
+        printf("Request body: %s\n", ex.what());
+      }
+    }
+  }
 
-    mg_send_head(nc, 200, d.length(), "Content-Type: application/json");
+
+  void send_json(struct mg_connection *nc, nlohmann::json & j, int statusCode) {
+    std::string d = j.dump(2);
+
+    mg_send_head(nc, statusCode, d.length(), "Content-Type: application/json");
     mg_send(nc,d.c_str(),d.length());
   }
 
@@ -66,7 +80,7 @@ namespace vaccine {
 
           if ( s_uri_handlers.count(handler) == 1 ) {
             try {
-            (*s_uri_handlers[handler])(uri,nc,ev_data,hm);
+              (*s_uri_handlers[handler])(uri,nc,ev_data,hm);
             } catch (std::exception & ex) {
               mg_http_send_error(nc, 500, ex.what() );
             }
