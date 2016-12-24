@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 2.8.11)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_MACOSX_RPATH 1) 
 
-# Allow double colon in library iports
+# Coolest thing ever. used for vim autocompletion
+set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
+
+# Allow double colon in library imports
 cmake_policy(SET CMP0028 OLD)
 
 project(qnject)
