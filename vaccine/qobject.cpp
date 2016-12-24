@@ -8,7 +8,6 @@
 #include <QList>
 #include <QObject>
 #include <QWidget>
-#include <QWindow>
 #include <QBuffer>
 #include <QByteArray>
 #include <QMetaObject>
@@ -72,15 +71,6 @@ namespace vaccine {
         }
       }
 
-#if 0
-      // Windows and their children - do I need them?
-      for( QWindow * child : qApp->allWindows() ) {
-        resp["windows"].push_back( qPrintable(child->objectName()) );
-
-        for( QObject * obj : child->findChildren<QObject *>() )
-          resp["windows"][qPrintable(child->objectName())].push_back( qPrintable(obj->objectName()) );
-      }
-#endif
     } else if (uri == "qobject/getProperties") {
       with_object(objectName, statusCode, [&](QObject * obj) {
           const QMetaObject* metaObject = obj->metaObject();
