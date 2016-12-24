@@ -83,6 +83,8 @@ namespace vaccine {
               (*s_uri_handlers[handler])(uri,nc,ev_data,hm);
             } catch (std::exception & ex) {
               mg_http_send_error(nc, 500, ex.what() );
+            } catch (...) {
+              mg_http_send_error(nc, 500, "Unknwown error (exception)" );
             }
           }
           else 
