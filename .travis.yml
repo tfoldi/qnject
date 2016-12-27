@@ -27,7 +27,6 @@ addons:
     - qtbase5-dev
     - libc++-dev
     - gcc-4.9 
-    - g++-4.9
 
 script:
   # show OS/compiler version
