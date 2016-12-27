@@ -21,7 +21,7 @@ matrix:
     compiler: clang
     env: 
       - _CC=clang
-      - C_XX=clang++
+      - _CXX=clang++
 
 addons:
   apt:
@@ -37,7 +37,7 @@ script:
   - $CXX --version
 
   # compile and execute unit tests
-  - CC=$_CXX CXX=$_CXX cmake .
+  - CC=$_CC CXX=$_CXX cmake .
   - make all
   - make test
 
