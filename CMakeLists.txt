@@ -15,6 +15,9 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Instruct CMake to run moc automatically when needed.
 set(CMAKE_AUTOMOC ON)
 
+# add -pthread switch when necessary
+find_package(threads REQUIRED)
+
 # Find the Qt package
 find_package(Qt5Core)
 find_package(Qt5Widgets)
