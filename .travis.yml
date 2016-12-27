@@ -5,6 +5,10 @@
 # C++ project
 language: cpp
 
+# new modern dist, on docker
+dist: trusty
+sudo: false
+
 
 matrix:
   include:
@@ -17,7 +21,7 @@ addons:
   apt:
     packages:
     - cmake
-    - libqt4-dev
+    - libqt5-dev
 
 script:
   # show OS/compiler version
