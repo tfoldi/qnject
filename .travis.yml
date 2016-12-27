@@ -1,0 +1,30 @@
+#########################
+# project configuration #
+#########################
+
+# C++ project
+language: cpp
+
+
+matrix:
+  include:
+  - os: linux
+    compiler: gcc
+  - os: linux
+    compiler: clang
+
+addons:
+  apt:
+    packages:
+    - cmake
+    - libqt4-dev
+
+script:
+  # show OS/compiler version
+  - uname -a
+  - $CXX --version
+
+  # compile and execute unit tests
+  - make all
+  - make test
+
