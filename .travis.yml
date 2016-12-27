@@ -22,6 +22,7 @@ addons:
     packages:
     - cmake
     - qtbase5-dev
+    - libc++-dev
 
 script:
   # show OS/compiler version
