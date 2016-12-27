@@ -38,6 +38,9 @@ addons:
     - cmake
     - qtbase5-dev
 
+env:
+  - CMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu/cmake/Qt5Core/
+  - CMAKE_PREFIX_PATH=
 
 script:
   # show OS/compiler version
