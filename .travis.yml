@@ -10,6 +10,7 @@ dist: trusty
 sudo: false
 
 
+# Is there any better way? Maybe yaml merge (<<) for compiler defs?
 matrix:
   include:
   - os: linux
@@ -31,6 +32,29 @@ matrix:
         packages:
           - clang-3.7
     env: COMPILER=clang++-3.7
+  - os: linux
+    compiler: gcc
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+        packages:
+          - g++-5
+    env: 
+      - COMPILER=g++-5
+      - CMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu/cmake/Qt5Core/
+  - os: linux
+    compiler: clang
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+          - llvm-toolchain-precise-3.7
+        packages:
+          - clang-3.7
+    env: 
+      - COMPILER=clang++-3.7
+      - CMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu/cmake/Qt5Core/
 
 addons:
   apt:
@@ -39,7 +63,6 @@ addons:
     - qtbase5-dev
 
 env:
-  - CMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu/cmake/Qt5Core/
   - CMAKE_PREFIX_PATH=
 
 script:
