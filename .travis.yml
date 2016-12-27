@@ -25,6 +25,7 @@ script:
   - $CXX --version
 
   # compile and execute unit tests
+  - cmake .
   - make all
   - make test
 
