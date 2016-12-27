@@ -15,10 +15,13 @@ matrix:
   - os: linux
     compiler: gcc
     env: 
-      - CC=gcc-4.9
-      - CXX=g++-4.9
+      - _CC=gcc-4.9
+      - _CXX=g++-4.9
   - os: linux
     compiler: clang
+    env: 
+      - _CC=clang
+      - C_XX=clang++
 
 addons:
   apt:
@@ -34,7 +37,7 @@ script:
   - $CXX --version
 
   # compile and execute unit tests
-  - cmake .
+  - CC=$_CXX CXX=$_CXX cmake .
   - make all
   - make test
 
