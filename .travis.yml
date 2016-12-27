@@ -21,7 +21,7 @@ addons:
   apt:
     packages:
     - cmake
-    - libqt5-dev
+    - qtbase5-dev
 
 script:
   # show OS/compiler version
