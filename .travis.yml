@@ -14,22 +14,30 @@ matrix:
   include:
   - os: linux
     compiler: gcc
-    env: 
-      - _CC=gcc-4.9
-      - _CXX=g++-4.9
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+        packages:
+          - g++-5
+    env: COMPILER=g++-5
   - os: linux
     compiler: clang
-    env: 
-      - _CC=clang
-      - _CXX=clang++
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+          - llvm-toolchain-precise-3.7
+        packages:
+          - clang-3.7
+    env: COMPILER=clang++-3.7
 
 addons:
   apt:
     packages:
     - cmake
     - qtbase5-dev
-    - libc++-dev
-    - gcc-4.9 
+
 
 script:
   # show OS/compiler version
@@ -37,7 +45,7 @@ script:
   - $CXX --version
 
   # compile and execute unit tests
-  - CC=$_CC CXX=$_CXX cmake .
+  - cmake -DCMAKE_CXX_COMPILER=$COMPILER  .
   - make all
   - make test
 
