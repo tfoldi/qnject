@@ -16,7 +16,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
 # add -pthread switch when necessary
-find_package(threads REQUIRED)
+find_package(Threads REQUIRED)
 
 # Find the Qt package
 find_package(Qt5Core)
