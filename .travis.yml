@@ -62,9 +62,6 @@ addons:
     - cmake
     - qtbase5-dev
 
-env:
-  - CMAKE_PREFIX_PATH=
-
 script:
   # show OS/compiler version
   - uname -a
