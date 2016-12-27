@@ -5,6 +5,7 @@
 
 #include "../deps/mongoose/mongoose.h"
 #include "../deps/json/json.hpp"
+#include "utils.hpp"
 
 #include "vaccine.h"
 
@@ -24,19 +25,6 @@ namespace vaccine {
 
   static int has_prefix(const struct mg_str *uri, const struct mg_str *prefix) {
     return uri->len > prefix->len && memcmp(uri->p, prefix->p, prefix->len) == 0;
-  }
-
-  std::string get_until_char(std::string const& s, char c)
-  {
-    std::string::size_type pos = s.find(c);
-    if (pos != std::string::npos)
-    {
-      return s.substr(0, pos);
-    }
-    else
-    {
-      return s;
-    }
   }
 
   void parse_request_body(struct http_message *hm, nlohmann::json & req)
@@ -64,16 +52,12 @@ namespace vaccine {
     struct http_message *hm = (struct http_message *) ev_data;
     static const struct mg_str api_prefix = MG_MK_STR("/api/");
 
-
-
     switch (ev) {
       case MG_EV_HTTP_REQUEST:
         if (has_prefix(&hm->uri, &api_prefix) && hm->uri.len - api_prefix.len > 0) {
           // API request
-          std::string uri,handler;
-
-          uri.assign(hm->uri.p + api_prefix.len, hm->uri.len - api_prefix.len);
-          handler = get_until_char(uri,'/');
+          std::string uri(hm->uri.p + api_prefix.len, hm->uri.len - api_prefix.len);
+          std::string handler = get_until_char(uri,'/');
          
           // call registred handler
           printf("Request is %s\n", uri.c_str() );

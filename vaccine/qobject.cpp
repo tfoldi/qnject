@@ -40,7 +40,7 @@ namespace vaccine {
     nlohmann::json resp, req;
     int statusCode = 200;
     const char * objectName = "";
- 
+
     // get request data
     parse_request_body(hm,req);
     if ( req["object"] != nullptr && ! req["object"].empty() )
