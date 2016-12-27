@@ -42,7 +42,7 @@ matrix:
           - g++-5
     env: 
       - COMPILER=g++-5
-      - CMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu/
+      - Qt5Core_DIR=/usr/lib/x86_64-linux-gnu/cmake/Qt5Core
   - os: linux
     compiler: clang
     addons:
@@ -54,7 +54,7 @@ matrix:
           - clang-3.7
     env: 
       - COMPILER=clang++-3.7
-      - CMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu/
+      - Qt5Core_DIR=/usr/lib/x86_64-linux-gnu/cmake/Qt5Core
 
 addons:
   apt:
