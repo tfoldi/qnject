@@ -11,8 +11,8 @@
 
 namespace vaccine {
 
-  // when it's true, we shut down the party :(
-  bool shutdown = false;
+  // vaccine's state. read and write carefully 
+  mg_state state = UNINITALIZED;
 
   static const char *s_default_http_port = "8000";
   static struct mg_serve_http_opts s_http_server_opts;
@@ -22,6 +22,10 @@ namespace vaccine {
   void register_callback(std::string handler, t_vaccine_api_handler function) {
     s_uri_handlers[handler] = function;
   }
+
+  const std::map<std::string, t_vaccine_api_handler> registered_handlers() { 
+    return s_uri_handlers;
+  };
 
   static int has_prefix(const struct mg_str *uri, const struct mg_str *prefix) {
     return uri->len > prefix->len && memcmp(uri->p, prefix->p, prefix->len) == 0;
@@ -64,7 +68,7 @@ namespace vaccine {
 
           if ( s_uri_handlers.count(handler) == 1 ) {
             try {
-              (*s_uri_handlers[handler])(uri,nc,ev_data,hm);
+              s_uri_handlers[handler](uri,nc,ev_data,hm);
             } catch (std::exception & ex) {
               mg_http_send_error(nc, 500, ex.what() );
             } catch (...) {
@@ -90,22 +94,25 @@ namespace vaccine {
     int i;
     const char * http_port = getenv("VACCINE_HTTP_PORT") == NULL ? s_default_http_port : getenv("VACCINE_HTTP_PORT");
 
-    printf("Opening web server socket\n");
-
     /* Open listening socket */
     mg_mgr_init(&mgr, NULL);
     nc = mg_bind(&mgr, http_port, ev_handler);
     mg_set_protocol_http_websocket(nc);
-    s_http_server_opts.document_root = "/tmp/a";
+
+    /* mount UI. TODO: search for the right path */
+    s_http_server_opts.document_root = "./elm-street"; 
 
     /* Run event loop until signal is received */
-    printf("Starting RESTful server on port %s\n", http_port);
-    while (! shutdown) {
+    state = mg_state::RUNNING;
+    printf("Starting vaccine HTTP REST API server on port %s\n", http_port);
+
+    while (state == mg_state::RUNNING) {
       mg_mgr_poll(&mgr, 1000);
     }
 
     /* Cleanup */
     mg_mgr_free(&mgr);
+    state = mg_state::NOT_RUNNING;
 
     printf("Exiting on shutdown request");
   }

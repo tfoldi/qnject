@@ -1,10 +1,16 @@
 #include "../../deps/catch/catch.hpp"
 #include "../../deps/mongoose/mongoose.h"
 
+#include "../vaccine.h"
+
 #include "http_client.h"
+
 
 TEST_CASE("Accessing echo thru web service", "[echo]") {
   static const char * s_url = "http://127.0.0.1:8000/api/echo";
+
+  for (auto i = 0; vaccine::state != vaccine::mg_state::RUNNING || i < 10 ; i++)
+    usleep(1000);
 
 
   SECTION("Simple http invocation to test respone body") {

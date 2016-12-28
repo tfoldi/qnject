@@ -19,12 +19,10 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
     case MG_EV_CONNECT:
       user_data->err_code = *(int *) ev_data;
       if (connect_status != 0) {
-        printf("Error connecting  %s\n",  strerror(connect_status));
+        user_data->done = true;
       }
       break;
     case MG_EV_HTTP_REPLY:
-      printf("Got reply:\n%.*s\n", (int) hm->body.len, hm->body.p);
-
       nc->flags |= MG_F_SEND_AND_CLOSE;
       user_data->done = true;
 
@@ -55,7 +53,6 @@ void http_request(const char * url, const char * data, std::function<void(struct
   nc = mg_connect_http_opt(&mgr, ev_handler, opts, url, NULL, data);
   mg_set_protocol_http_websocket(nc);
 
-  printf("Starting RESTful client against %s\n", url);
   while (!user_data.done) {
     mg_mgr_poll(&mgr, 1000);
   }
