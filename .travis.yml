@@ -70,5 +70,5 @@ script:
   # compile and execute unit tests
   - cmake -DCMAKE_CXX_COMPILER=$COMPILER  .
   - make all
-  - make test
+  - ctest -V
 
