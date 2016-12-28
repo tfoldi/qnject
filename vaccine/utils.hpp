@@ -22,6 +22,7 @@ namespace vaccine {
 
         if ( begin != str )
           result.push_back(std::string(begin, str));
+
       } while (0 != *str++);
     }
 

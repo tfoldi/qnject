@@ -3,7 +3,9 @@
 set(VACCINE_LINKED_UNITTEST_TARGET_NAME "01_linked_unit")
 add_executable(${VACCINE_LINKED_UNITTEST_TARGET_NAME}
   01_linked_units.cpp
+  http_client.cpp
   unit_utils.cpp
+  unit_echo.cpp
   )
 
 set_target_properties(${VACCINE_LINKED_UNITTEST_TARGET_NAME} PROPERTIES

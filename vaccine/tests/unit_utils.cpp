@@ -90,3 +90,24 @@ TEST_CASE( "Split URLs into array of directories", "[utils]") {
   }
 }
 
+TEST_CASE("get_until_char", "[utils]") {
+  
+    SECTION("regular case") {
+      std::string test = "foo/bar";
+
+      CHECK( vaccine::get_until_char(test, '/') == "foo");
+    }
+
+    SECTION("empty string") {
+      std::string test;
+
+      CHECK( vaccine::get_until_char(test, '/') == "");
+    }
+
+    SECTION("first char is a slash") {
+      std::string test = "/bar";
+
+      CHECK( vaccine::get_until_char(test, '/') == "");
+    }
+}
+
