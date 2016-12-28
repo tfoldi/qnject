@@ -28,39 +28,44 @@ matrix:
       apt:
         sources:
           - ubuntu-toolchain-r-test
-          - llvm-toolchain-precise-3.7
+          - llvm-toolchain-trusty-3.8
         packages:
-          - clang-3.7
-    env: COMPILER=clang++-3.7
+          - clang-3.8
+    env: COMPILER=clang++-3.8
   - os: linux
     compiler: gcc
     addons:
       apt:
         sources:
           - ubuntu-toolchain-r-test
+          - ppa:beineri/opt-qt562-trusty
         packages:
           - g++-5
+          - mesa-common-dev
+          - qt56base
     env: 
       - COMPILER=g++-5
-      - Qt5Core_DIR=/usr/lib/x86_64-linux-gnu/cmake/Qt5Core
+      - CMAKE_PREFIX_PATH=/opt/qt56
   - os: linux
     compiler: clang
     addons:
       apt:
         sources:
           - ubuntu-toolchain-r-test
-          - llvm-toolchain-precise-3.7
+          - llvm-toolchain-trusty-3.8
+          - ppa:beineri/opt-qt562-trusty
         packages:
-          - clang-3.7
+          - clang-3.8
+          - mesa-common-dev
+          - qt56base 
     env: 
-      - COMPILER=clang++-3.7
-      - Qt5Core_DIR=/usr/lib/x86_64-linux-gnu/cmake/Qt5Core
+      - COMPILER=clang++-3.8
+      - CMAKE_PREFIX_PATH=/opt/qt56
 
 addons:
   apt:
     packages:
     - cmake
-    - qtbase5-dev
 
 script:
   # show OS/compiler version
