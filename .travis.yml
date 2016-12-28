@@ -28,10 +28,10 @@ matrix:
       apt:
         sources:
           - ubuntu-toolchain-r-test
-          - llvm-toolchain-trusty-3.8
+          - llvm-toolchain-precise-3.7
         packages:
-          - clang-3.8
-    env: COMPILER=clang++-3.8
+          - clang-3.7
+    env: COMPILER=clang++-3.7
   - os: linux
     compiler: gcc
     addons:
@@ -52,14 +52,14 @@ matrix:
       apt:
         sources:
           - ubuntu-toolchain-r-test
-          - llvm-toolchain-trusty-3.8
+          - llvm-toolchain-precise-3.7
           - sourceline: deb http://ppa.launchpad.net/beineri/opt-qt562-trusty/ubuntu trusty main 
         packages:
-          - clang-3.8
+          - clang-3.7
           - mesa-common-dev
           - qt56base 
     env: 
-      - COMPILER=clang++-3.8
+      - COMPILER=clang++-3.7
       - CMAKE_PREFIX_PATH=/opt/qt56
 
 addons:
