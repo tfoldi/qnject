@@ -38,7 +38,7 @@ matrix:
       apt:
         sources:
           - ubuntu-toolchain-r-test
-          - ppa:beineri/opt-qt562-trusty
+          - sourceline: deb http://ppa.launchpad.net/beineri/opt-qt562-trusty/ubuntu trusty main 
         packages:
           - g++-5
           - mesa-common-dev
@@ -53,7 +53,7 @@ matrix:
         sources:
           - ubuntu-toolchain-r-test
           - llvm-toolchain-trusty-3.8
-          - ppa:beineri/opt-qt562-trusty
+          - sourceline: deb http://ppa.launchpad.net/beineri/opt-qt562-trusty/ubuntu trusty main 
         packages:
           - clang-3.8
           - mesa-common-dev
