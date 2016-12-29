@@ -16,12 +16,7 @@
     '');
 
     buildPhase = ''
-        export TARGET="$out"
-        make
+        make all test ARGS=-V
       '';
-
-    installPhase = ''
-      make test ARGS=-V
-    '';
   };
 }
