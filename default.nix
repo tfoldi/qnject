@@ -17,10 +17,11 @@
 
     buildPhase = ''
         export TARGET="$out"
+        make
       '';
 
     installPhase = ''
-      ctest -V
+      make test ARGS=-V
     '';
   };
 }
