@@ -26,9 +26,9 @@ find_package(Qt5Widgets)
 # string (json) contents
 find_program(RESOURCE_COMPILER xxd)
 
-if(RESOURCE_COMPILER-NOTFOUND)
-    message( FATAL_ERROR "You must have xxd in order to build qnject" )
-endif(RESOURCE_COMPILER-NOTFOUND)
+if(NOT RESOURCE_COMPILER)
+    message(FATAL_ERROR "You must have xxd in order to build qnject" )
+endif()
 
 configure_file(config.h.in config.h)
 
