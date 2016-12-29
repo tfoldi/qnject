@@ -28,4 +28,9 @@ else(Qt5Core_FOUND AND Qt5Widgets_FOUND)
   target_link_libraries(qnject ${CMAKE_THREAD_LIBS_INIT})
 endif(Qt5Core_FOUND AND Qt5Widgets_FOUND)
 
+
+install(TARGETS qnject
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib)
+
 add_subdirectory(tests)
