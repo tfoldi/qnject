@@ -12,9 +12,8 @@
     '');
     preBuild = "ln -s build/config.h ../config.h";
     installPhase = ''
-      mkdir -p $out/lib $out/bin
+      mkdir -p $out/lib
       cp vaccine/libqnject.so $out/lib/
-      cp vaccine/tests/01_linked_unit $out/bin/
       ctest -V
     '';
   };
