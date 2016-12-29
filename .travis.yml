@@ -1,5 +1,5 @@
 language: nix
-matrix:
+env:
   - USE_CLANG=false USE_QT=false
   - USE_CLANG=false USE_QT=true
   - USE_CLANG=true USE_QT=false
