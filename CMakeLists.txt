@@ -14,6 +14,8 @@ project(qnject)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Instruct CMake to run moc automatically when needed.
 set(CMAKE_AUTOMOC ON)
+# Use rpath always during build phase (otherwise tests will not work)
+set(CMAKE_SKIP_BUILD_RPATH OFF)
 
 # add -pthread switch when necessary
 find_package(Threads REQUIRED)
