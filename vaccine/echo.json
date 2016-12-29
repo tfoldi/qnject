@@ -1,0 +1,13 @@
+{
+            "get": {
+                "description": "The first version of the `echo` handler.\nPrints fixed `HELO` then goes away\n",
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+}

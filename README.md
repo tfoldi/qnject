@@ -1,4 +1,4 @@
-# qnject
+# qnject [![Build Status](https://travis-ci.org/tfoldi/qnject.svg?branch=master)](https://travis-ci.org/tfoldi/qnject)
 
 Hello my friend. Yes, this is an another hacky project to make Qt developers life easier. It injects a full featured 
 web server into binary process to modify its behaviours (hook, alter QObjects, etc). 

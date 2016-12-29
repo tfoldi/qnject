@@ -1,5 +1,6 @@
 #include "../config.h"
 #include "vaccine.h"
+#include "echo.json.h"
 
 namespace vaccine {
 
@@ -16,6 +17,7 @@ namespace vaccine {
   __attribute__((constructor))
     static void initializer(void) {
       printf("[%s] Register echo service\n", __FILE__);
+      printf("json: %s\n", echo_json ); 
       vaccine::register_callback("echo", echo_handler);
     }
 

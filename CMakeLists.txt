@@ -22,6 +22,14 @@ find_package(Threads REQUIRED)
 find_package(Qt5Core)
 find_package(Qt5Widgets)
 
+# We're using xxd to build .h files with static 
+# string (json) contents
+find_program(RESOURCE_COMPILER xxd)
+
+if(RESOURCE_COMPILER-NOTFOUND)
+    message( FATAL_ERROR "You must have xxd in order to build qnject" )
+endif(RESOURCE_COMPILER-NOTFOUND)
+
 configure_file(config.h.in config.h)
 
 enable_testing()
