@@ -3,7 +3,7 @@
   qnject = pkgs.stdenv.mkDerivation rec {
     name = "qnject";
     src = ./.;
-    buildInputs = with pkgs; [ cmake ];
+    buildInputs = with pkgs; [ cmake vim ];
     cmakeFlags = (if ! use_clang then "" else ''
       -DCMAKE_C_COMPILER=${pkgs.clang}/bin/clang
       -DCMAKE_CXX_COMPILER=${pkgs.clang}/bin/clang++
