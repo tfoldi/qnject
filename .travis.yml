@@ -6,4 +6,3 @@ env:
   - USE_CLANG=true USE_QT=true
 script:
   - nix-build --arg use_clang $USE_CLANG --arg use_qt $USE_QT
-  - result/bin/01_linked_unit

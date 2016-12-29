@@ -15,6 +15,7 @@
       mkdir -p $out/lib $out/bin
       cp vaccine/libqnject.so $out/lib/
       cp vaccine/tests/01_linked_unit $out/bin/
+      ctest -V
     '';
   };
 }
