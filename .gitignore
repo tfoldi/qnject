@@ -22,3 +22,4 @@ qt-path
 vaccine/CTestTestfile.cmake
 vaccine/Testing/
 vaccine/tests/01_linked_unit
+Testing
