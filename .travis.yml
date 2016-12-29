@@ -6,5 +6,5 @@ matrix:
   - USE_CLANG=true USE_QT=false
   - USE_CLANG=true USE_QT=true
 script:
-- nix-build --attr use_clang $USE_CLANG --attr use_qt $USE_QT
+- nix-build --arg use_clang $USE_CLANG --arg use_qt $USE_QT
 - result/bin/01_linked_unit
