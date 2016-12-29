@@ -10,7 +10,7 @@
     '') + (if ! use_qt then "" else ''
       -DCMAKE_PREFIX_PATH=${pkgs.qt5.full}
     '');
-    preBuild = "cmake . && ln -s build/config.h ../config.h";
+    preBuild = "ln -s build/config.h ../config.h";
     installPhase = ''
       mkdir -p $out/lib $out/bin
       cp vaccine/libqnject.so $out/lib/
