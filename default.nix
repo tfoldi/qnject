@@ -6,10 +6,8 @@
     
     buildInputs = with pkgs; [ cmake vim ];
 
-    dontUseCmakeConfigure = true;
     dontUseCmakeBuildDir = true;
 
-  
     cmakeFlags = (if ! use_clang then "" else ''
       -DCMAKE_C_COMPILER=${pkgs.clang}/bin/clang
       -DCMAKE_CXX_COMPILER=${pkgs.clang}/bin/clang++
