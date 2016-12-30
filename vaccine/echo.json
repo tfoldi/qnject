@@ -9,5 +9,6 @@
                         }
                     }
                 }
+                "produces": "text/html"
             }
 }

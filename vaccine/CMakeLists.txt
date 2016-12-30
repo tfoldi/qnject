@@ -28,6 +28,8 @@ else(Qt5Core_FOUND AND Qt5Widgets_FOUND)
   target_link_libraries(qnject ${CMAKE_THREAD_LIBS_INIT})
 endif(Qt5Core_FOUND AND Qt5Widgets_FOUND)
 
+add_executable(qnject_swagger_json swagger_json.cpp)
+target_link_libraries(qnject_swagger_json qnject)
 
 install(TARGETS qnject
         RUNTIME DESTINATION bin

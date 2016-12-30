@@ -24,10 +24,33 @@ namespace vaccine {
   // map handler with their callbacks
   static std::map<std::string, t_vaccine_api_handler> s_uri_handlers;
 
+  // swagger service description
+  static nlohmann::json s_swagger_json =
+    nlohmann::json({
+        {"swagger", "2.0"},
+        {"info", {
+          { "version", "0.1.0"},
+          {"title", "qnject - injected in-process HTTP server"}
+          }
+        },
+        {"basePath", "/api"},
+        {"paths", nlohmann::json({}) }   
+        });
+
+  const nlohmann::json swagger_json() { return s_swagger_json; }
+
   // simply push the callback function into our big map of handlers
   // this function is called from our handler "plugins" 
-  void register_callback(std::string handler, t_vaccine_api_handler function) {
+  void register_callback(std::string handler, t_vaccine_api_handler function, 
+      const unsigned char * swagger_spec) 
+  {
     s_uri_handlers[handler] = function;
+    if (swagger_spec) {
+      // Add handler to our swagger definition:
+      // /<handler -> specification from json.h file
+      s_swagger_json["paths"].push_back( 
+          { "/" + handler, nlohmann::json::parse(swagger_spec)} );
+    }
   }
 
   // const getter for the registred handlers
@@ -55,10 +78,16 @@ namespace vaccine {
   }
 
   // send json response to the client
-  void send_json(struct mg_connection *nc, nlohmann::json & j, int statusCode) {
+  void send_json(struct mg_connection *nc, nlohmann::json & j, int statusCode) 
+  {
+    static const auto headers = 
+      "Access-Control-Allow-Origin: *\r\n"
+      "Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept\r\n"
+      "Content-Type: application/json";
+
     std::string d = j.dump(2);
 
-    mg_send_head(nc, statusCode, d.length(), "Content-Type: application/json");
+    mg_send_head(nc, statusCode, d.length(), headers);
     mg_send(nc,d.c_str(),d.length());
   }
 
@@ -66,9 +95,13 @@ namespace vaccine {
   //
   // if URI starts with /api then it calls the matching handler
   // else tries to serve the static content piece
+  //
+  // TODO: refactor, move out HTTP_REQUEST handling and use split string
+  // instead of has prefix and other mg_str crap
   static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
     struct http_message *hm = (struct http_message *) ev_data;
     static const struct mg_str api_prefix = MG_MK_STR("/api/");
+    static const struct mg_str swagger_json_uri = MG_MK_STR("/swagger.json");
 
     switch (ev) {
       case MG_EV_HTTP_REQUEST:
@@ -91,6 +124,9 @@ namespace vaccine {
           }
           else 
             mg_http_send_error(nc, 404, "Handler not registred");
+        } else if (has_prefix(&hm->uri, &swagger_json_uri) ) {
+          printf("I'm here\n");
+          send_json(nc, s_swagger_json, 200);
         } else {
           // static web shit
           mg_serve_http(nc, hm, s_http_server_opts); 
@@ -112,6 +148,9 @@ namespace vaccine {
     nc = mg_bind(&mgr, http_port, ev_handler);
     mg_set_protocol_http_websocket(nc);
 
+    /* set listing host as baseuri */
+    s_swagger_json["host"] = std::string("localhost:") + http_port;
+
     /* mount UI. TODO: search for the right path */
     s_http_server_opts.document_root = "./elm-street"; 
 
@@ -129,4 +168,13 @@ namespace vaccine {
     state = mg_state::NOT_RUNNING;
   }
 
+  // waits until vaccine is up and runnig. optional timeout in ms, -1 infinity
+  void wait_until_vaccine_is_running(int usecs) 
+  {
+    // make sure we're running
+    static const auto poll_sleep = 1000;
+
+    for (auto i = 0; vaccine::state != vaccine::mg_state::RUNNING || i * poll_sleep < usecs || usecs == -1 ; i++)
+      usleep(poll_sleep);
+  }
 }
