@@ -25,3 +25,4 @@ vaccine/tests/01_linked_unit
 Testing
 config.h
 *.json.h
+vaccine/qnject_swagger_json
