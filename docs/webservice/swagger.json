@@ -1,0 +1,22 @@
+{
+  "info": {
+    "title": "qnject - injected in-process HTTP server",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/echo": {
+      "get": {
+        "description": "The first version of the `echo` handler.\nPrints fixed `HELO` then goes away\n",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "schema": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "swagger": "2.0"
+}
