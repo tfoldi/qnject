@@ -36,9 +36,9 @@ namespace vaccine {
     return split( tmp.c_str(), c);
   }
 
-  std::string get_until_char(std::string const& s, char c)
+  std::string get_until_char(std::string const& s, char c, size_t p = 0)
   {
-    std::string::size_type pos = s.find(c);
+    std::string::size_type pos = s.find(c,p);
     if (pos != std::string::npos)
     {
       return s.substr(0, pos);

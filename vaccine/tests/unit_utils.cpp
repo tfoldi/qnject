@@ -96,18 +96,28 @@ TEST_CASE("get_until_char", "[utils]") {
       std::string test = "foo/bar";
 
       CHECK( vaccine::get_until_char(test, '/') == "foo");
+      CHECK( vaccine::get_until_char(test, '/',1) == "foo");
     }
 
     SECTION("empty string") {
       std::string test;
 
       CHECK( vaccine::get_until_char(test, '/') == "");
+      CHECK( vaccine::get_until_char(test, '/',1) == "");
     }
 
     SECTION("first char is a slash") {
       std::string test = "/bar";
 
       CHECK( vaccine::get_until_char(test, '/') == "");
+      CHECK( vaccine::get_until_char(test, '/',1) == "/bar");
+    }
+
+    SECTION("first and last char are a slash") {
+      std::string test = "/bar/";
+
+      CHECK( vaccine::get_until_char(test, '/') == "");
+      CHECK( vaccine::get_until_char(test, '/',1) == "/bar");
     }
 }
 

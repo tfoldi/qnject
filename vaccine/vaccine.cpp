@@ -9,13 +9,16 @@
 
 #include "vaccine.h"
 
+#define VACCINE_API_PREFIX "/api"
+#define VACCINE_SWAGGER_JSON "/swagger.json"
+
 namespace vaccine {
 
   // vaccine's state. read and write carefully 
   mg_state state = UNINITALIZED;
 
   // default port, can be override by VACCINE_HTTP_PORT env variable 
-  static const char *s_default_http_port = "8000";
+  static constexpr auto s_default_http_port = "8000";
 
   // options for our http server. 
   // XXX: this could be local var I guess using user_data
@@ -33,10 +36,11 @@ namespace vaccine {
           {"title", "qnject - injected in-process HTTP server"}
           }
         },
-        {"basePath", "/api"},
+        {"basePath", VACCINE_API_PREFIX },
         {"paths", nlohmann::json({}) }   
         });
 
+  // return with swagger_json file
   const nlohmann::json swagger_json() { return s_swagger_json; }
 
   // simply push the callback function into our big map of handlers
@@ -58,17 +62,11 @@ namespace vaccine {
     return s_uri_handlers;
   };
 
-  // check if an mg_str starts with an another mg_str. 
-  static int has_prefix(const struct mg_str *uri, const struct mg_str *prefix) {
-    return uri->len > prefix->len && memcmp(uri->p, prefix->p, prefix->len) == 0;
-  }
-
   // get parsed json object from a http PUT/POST data req
   void parse_request_body(struct http_message *hm, nlohmann::json & req)
   {
     if ( hm->body.len > 0 ) {
-      std::string s;
-      s.assign(hm->body.p, hm->body.len);
+      std::string s(hm->body.p, hm->body.len);
       try {
         req = nlohmann::json::parse(s);
       } catch (std::exception & ex ) {
@@ -100,22 +98,25 @@ namespace vaccine {
   // instead of has prefix and other mg_str crap
   static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
     struct http_message *hm = (struct http_message *) ev_data;
-    static const struct mg_str api_prefix = MG_MK_STR("/api/");
-    static const struct mg_str swagger_json_uri = MG_MK_STR("/swagger.json");
+    std::string uri;
+    std::vector<std::string> v_url;
 
     switch (ev) {
       case MG_EV_HTTP_REQUEST:
-        if (has_prefix(&hm->uri, &api_prefix) && hm->uri.len - api_prefix.len > 0) {
+        uri.assign(hm->uri.p, hm->uri.len);
+        v_url = split(hm->uri,'/');
+
+        if ( get_until_char(uri,'/',1) == VACCINE_API_PREFIX ) {
           // API request
-          std::string uri(hm->uri.p + api_prefix.len, hm->uri.len - api_prefix.len);
-          std::string handler = get_until_char(uri,'/');
+          std::string api_path(hm->uri.p + sizeof(VACCINE_API_PREFIX), hm->uri.len - sizeof(VACCINE_API_PREFIX));
+          std::string handler = v_url[1];
          
           // call registred handler
           printf("Request is %s\n", uri.c_str() );
 
           if ( s_uri_handlers.count(handler) == 1 ) {
             try {
-              s_uri_handlers[handler](uri,nc,ev_data,hm);
+              s_uri_handlers[handler](api_path,nc,ev_data,hm);
             } catch (std::exception & ex) {
               mg_http_send_error(nc, 500, ex.what() );
             } catch (...) {
@@ -124,8 +125,8 @@ namespace vaccine {
           }
           else 
             mg_http_send_error(nc, 404, "Handler not registred");
-        } else if (has_prefix(&hm->uri, &swagger_json_uri) ) {
-          printf("I'm here\n");
+        } else if (get_until_char(uri,'/',1) == VACCINE_SWAGGER_JSON) {
+          printf("Downloading \n");
           send_json(nc, s_swagger_json, 200);
         } else {
           // static web shit
