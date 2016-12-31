@@ -3,10 +3,13 @@
 #include <string>
 #include <map>
 
+#define LOGURU_IMPLEMENTATION 1
+#include "../deps/loguru/loguru.hpp"
+
 #include "../deps/mongoose/mongoose.h"
 #include "../deps/json/json.hpp"
-#include "utils.hpp"
 
+#include "utils.hpp"
 #include "vaccine.h"
 
 #define VACCINE_API_PREFIX "/api"
@@ -70,7 +73,7 @@ namespace vaccine {
       try {
         req = nlohmann::json::parse(s);
       } catch (std::exception & ex ) {
-        printf("Request body: %s\n", ex.what());
+        DLOG_F(ERROR, "Request body: %s", ex.what());
       }
     }
   }
@@ -111,9 +114,10 @@ namespace vaccine {
           std::string api_path(hm->uri.p + sizeof(VACCINE_API_PREFIX), hm->uri.len - sizeof(VACCINE_API_PREFIX));
           std::string handler = v_url[1];
          
-          // call registred handler
-          printf("Request is %s\n", uri.c_str() );
+          DLOG_SCOPE_F(INFO, "API request: '%.*s %s' => %s", 
+              (int)hm->method.len, hm->method.p, uri.c_str(), handler.c_str());
 
+          // call registred handler
           if ( s_uri_handlers.count(handler) == 1 ) {
             try {
               s_uri_handlers[handler](api_path,nc,ev_data,hm);
@@ -126,7 +130,7 @@ namespace vaccine {
           else 
             mg_http_send_error(nc, 404, "Handler not registred");
         } else if (get_until_char(uri,'/',1) == VACCINE_SWAGGER_JSON) {
-          printf("Downloading \n");
+          DLOG_F(INFO, "Downloading" VACCINE_SWAGGER_JSON);
           send_json(nc, s_swagger_json, 200);
         } else {
           // static web shit
@@ -157,7 +161,7 @@ namespace vaccine {
 
     /* socket bind, document root set, ready to serve */
     state = mg_state::RUNNING;
-    printf("Starting vaccine HTTP REST API server on port %s\n", http_port);
+    DLOG_F(INFO, "Starting vaccine HTTP REST API server on port %s", http_port);
 
     /* Run event loop until signal is received */
     while (state == mg_state::RUNNING) {

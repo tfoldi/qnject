@@ -1,6 +1,10 @@
+#include "../../config.h"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <thread>
+
+#include "../../deps/loguru/loguru.hpp"
 
 #include "../vaccine.h"
 
@@ -13,7 +17,7 @@ void start_thread();
 // Initializer.
 __attribute__((constructor))
   static void initializer(void) {
-    printf("[%s] Starting service thread\n", __FILE__);
+    DLOG_F(INFO,"Starting service thread");
     vaccine::state = vaccine::mg_state::INITALIZING;
     service_thread = new std::thread( vaccine::start_thread );
   }
@@ -21,7 +25,7 @@ __attribute__((constructor))
 // Finalizer.
 __attribute__((destructor))
   static void finalizer(void) {
-    printf("[%s] stopping service thread()\n", __FILE__);
+    DLOG_F(INFO, "Stopping service thread()");
     vaccine::state = vaccine::mg_state::SHUTDOWN_REQUESTED;
     service_thread->join();
     delete service_thread;

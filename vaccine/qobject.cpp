@@ -1,6 +1,5 @@
 #include "../config.h"
 #if HAVE_QT5CORE && HAVE_QT5WIDGETS 
-#include "vaccine.h"
 
 #include <dlfcn.h>
 #include <map>
@@ -13,7 +12,10 @@
 #include <QMetaObject>
 #include <QMetaProperty>
 
+#include "../deps/loguru/loguru.hpp"
 #include "../deps/json/json.hpp"
+
+#include "vaccine.h"
 
 namespace vaccine {
 
@@ -124,7 +126,7 @@ namespace vaccine {
 
   __attribute__((constructor))
     static void initializer(void) {
-      printf("[%s] Register qobject service\n", __FILE__);
+      DLOG_F(INFO, "Register qobject service");
       vaccine::register_callback("qobject", qobject_handler);
     }
 

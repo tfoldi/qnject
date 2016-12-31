@@ -20,6 +20,9 @@ add_library(qnject SHARED
   utils.hpp 
   lib_preload/dyld_insert.cpp 
   ../deps/mongoose/mongoose.c
+  ../deps/mongoose/mongoose.h
+  ../deps/loguru/loguru.hpp
+  ../deps/json/json.hpp
   ${COMPILED_RESOURCES}
   )
 
