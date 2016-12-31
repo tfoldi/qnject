@@ -26,3 +26,5 @@ Testing
 config.h
 *.json.h
 vaccine/qnject_swagger_json
+install_manifest.txt
+vaccine/tests/swagger.json

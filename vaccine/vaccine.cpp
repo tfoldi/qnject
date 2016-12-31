@@ -174,7 +174,13 @@ namespace vaccine {
     // make sure we're running
     static const auto poll_sleep = 1000;
 
+    if (vaccine::state > vaccine::mg_state::RUNNING)
+      throw std::runtime_error("vaccine already stopped");
+
     for (auto i = 0; vaccine::state != vaccine::mg_state::RUNNING || i * poll_sleep < usecs || usecs == -1 ; i++)
       usleep(poll_sleep);
+
+    if (vaccine::state != vaccine::mg_state::RUNNING)
+      throw std::runtime_error("timeout: wait_until_vaccine_is_running");
   }
 }

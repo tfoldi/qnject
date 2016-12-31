@@ -1,42 +1,49 @@
-Start testing: Dec 04 12:09 CET
+Start testing: Dec 30 22:25 CET
 ----------------------------------------------------------
-1/1 Testing: TEST00
-1/1 Test: TEST00
-Command: "/Users/tfoldi/Developer/qnject/vaccine/tests/00_simple_inject.sh"
-Directory: /Users/tfoldi/Developer/qnject/vaccine/tests
-"TEST00" start time: Dec 04 12:09 CET
+1/2 Testing: 01_linked_unit
+1/2 Test: 01_linked_unit
+Command: "/Users/tfoldi/Developer/qnject/vaccine/tests/01_linked_unit"
+Directory: /Users/tfoldi/Developer/qnject
+"01_linked_unit" start time: Dec 30 22:25 CET
 Output:
 ----------------------------------------------------------
-++ uname
-+ unamestr=Darwin
-+ [[ Darwin == \L\i\n\u\x ]]
-+ [[ Darwin == \D\a\r\w\i\n ]]
-+ DYLD_INSERT_LIBRARIES=../libqnject.dylib
-+ sleep 0.1
-+ sleep 0.05
-+ nc -v 127.0.0.1 8000
-found 0 associations
-found 1 connections:
-     1:	flags=82<CONNECTED,PREFERRED>
-	outif lo0
-	src 127.0.0.1 port 64796
-	dst 127.0.0.1 port 8000
-	rank info not available
-	TCP aux info available
-
-Connection to 127.0.0.1 port 8000 [tcp/irdmi] succeeded!
-+ exit 0
+[/Users/tfoldi/Developer/qnject/vaccine/echo.cpp] Register echo service
+[/Users/tfoldi/Developer/qnject/vaccine/qobject.cpp] Register qobject service
 [/Users/tfoldi/Developer/qnject/vaccine/lib_preload/dyld_insert.cpp] Starting service thread
-Opening web server socket
-Starting RESTful server on port 8000
+Starting vaccine HTTP REST API server on port 8000
+Request is echo
+===============================================================================
+All tests passed (30 assertions in 3 test cases)
+
 [/Users/tfoldi/Developer/qnject/vaccine/lib_preload/dyld_insert.cpp] stopping service thread()
-Exiting on shutdown request
 <end of output>
-Test time =   1.08 sec
+Test time =   1.04 sec
 ----------------------------------------------------------
 Test Passed.
-"TEST00" end time: Dec 04 12:09 CET
-"TEST00" time elapsed: 00:00:01
+"01_linked_unit" end time: Dec 30 22:25 CET
+"01_linked_unit" time elapsed: 00:00:01
 ----------------------------------------------------------
 
-End testing: Dec 04 12:09 CET
+2/2 Testing: 02_swagger_validation
+2/2 Test: 02_swagger_validation
+Command: "/usr/local/bin/swagger" "validate" "swagger.json"
+Directory: /Users/tfoldi/Developer/qnject/vaccine/tests
+"02_swagger_validation" start time: Dec 30 22:25 CET
+Output:
+----------------------------------------------------------
+Error: Error opening file "/Users/tfoldi/Developer/qnject/vaccine/tests/swagger.json" 
+ENOENT: no such file or directory, open '/Users/tfoldi/Developer/qnject/vaccine/tests/swagger.json'
+    at ono (/usr/local/lib/node_modules/swagger-cli/node_modules/ono/lib/index.js:67:20)
+    at ReadFileContext.callback (/usr/local/lib/node_modules/swagger-cli/node_modules/json-schema-ref-parser/lib/read.js:119:18)
+    at FSReqWrap.readFileAfterOpen [as oncomplete] (fs.js:365:13) 
+
+Error: ENOENT: no such file or director
+<end of output>
+Test time =   0.24 sec
+----------------------------------------------------------
+Test Failed.
+"02_swagger_validation" end time: Dec 30 22:25 CET
+"02_swagger_validation" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Dec 30 22:25 CET

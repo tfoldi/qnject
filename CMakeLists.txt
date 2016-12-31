@@ -28,6 +28,10 @@ find_package(Qt5Widgets)
 # string (json) contents
 find_program(RESOURCE_COMPILER xxd)
 
+# to validate swagger.json file we need the swagger-cli npm package
+# -> if not found, we do validation using the public web services 
+find_program(SWAGGER_CLI swagger)
+
 if(NOT RESOURCE_COMPILER)
     message(FATAL_ERROR "You must have xxd in order to build qnject" )
 endif()
