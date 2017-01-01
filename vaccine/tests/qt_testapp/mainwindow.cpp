@@ -1,6 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+extern struct catch_result { bool is_ready; int ret; } catch_result;
+
 MainWindow::MainWindow(QWidget *parent) :
   QMainWindow(parent),
   ui(new Ui::MainWindow)
@@ -21,7 +23,9 @@ MainWindow::~MainWindow()
 
 void MainWindow::timerEvent(QTimerEvent *event)
 {
-  if (m_exitInSeconds <= 0 )
+  if (catch_result.is_ready)
+    QApplication::exit(catch_result.ret);
+  else if (m_exitInSeconds <= 0 )
     QApplication::exit();
   else
     ui->m_lTimer->setText( QString("Exiting in ") + QString::number(m_exitInSeconds--) + " seconds." );
