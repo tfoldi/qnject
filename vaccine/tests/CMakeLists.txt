@@ -38,3 +38,6 @@ else()
   message(WARNING "no swagger cli found - skipping swagger.json validation")
 endif()
 
+if(WITH_QT)
+  add_subdirectory(qt_testapp)
+endif()

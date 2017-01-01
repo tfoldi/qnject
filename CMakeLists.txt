@@ -12,8 +12,6 @@ project(qnject)
 
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-# Instruct CMake to run moc automatically when needed.
-set(CMAKE_AUTOMOC ON)
 # Use rpath always during build phase (otherwise tests will not work)
 set(CMAKE_SKIP_BUILD_RPATH OFF)
 
@@ -23,6 +21,9 @@ find_package(Threads REQUIRED)
 # Find the Qt package
 find_package(Qt5Core)
 find_package(Qt5Widgets)
+if(Qt5Core_FOUND AND Qt5Widgets_FOUND)
+  set(WITH_QT TRUE)
+endif()
 
 # We're using xxd to build .h files with static 
 # string (json) contents
