@@ -16,7 +16,7 @@
     '');
 
     buildPhase = ''
-        make all test ARGS=-V
+        DISPLAY=:99.0 make all test ARGS=-V
       '';
   };
 }
