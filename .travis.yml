@@ -4,5 +4,14 @@ env:
   - USE_CLANG=false USE_QT=true
   - USE_CLANG=true USE_QT=false
   - USE_CLANG=true USE_QT=true
+
+before_script:
+  - |
+    if [[ "${USE_QT}" == "true" ]]; then
+      export DISPLAY=:99.0
+      sh -e /etc/init.d/xvfb start"
+      sleep 3
+    fi
+
 script:
   - nix-build --arg use_clang $USE_CLANG --arg use_qt $USE_QT
