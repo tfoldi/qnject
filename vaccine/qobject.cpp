@@ -64,7 +64,7 @@ namespace vaccine {
           resp["widgets"].push_back( 
               {
                 {"objectName",  qPrintable(child->objectName())},
-                {"parentName", qPrintable(child->parent()->objectName()) },
+                {"parentName", child->parent() ? qPrintable(child->parent()->objectName()) : "" },
                 {"obectKind", "widget" },
                 {"className", child->metaObject()->className() },
                 {"superClass", child->metaObject()->superClass()->className() }
