@@ -40,4 +40,5 @@ endif()
 
 if(WITH_QT)
   add_subdirectory(qt_testapp)
+
 endif()
