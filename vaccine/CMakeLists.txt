@@ -1,7 +1,7 @@
 # Generate json.h files from json path definitions 
-file(GLOB_RECURSE COMPILED_RESOURCES "*.json")
+file(GLOB COMPILED_RESOURCES "*.json")
 foreach(INPUT_FILE ${COMPILED_RESOURCES})
-  get_filename_component(INPUT_FILE_NAME ${INPUT_FILE} NAME CACHE)
+  get_filename_component(INPUT_FILE_NAME ${INPUT_FILE} NAME NOCACHE)
   set(OUTPUT_FILE ${INPUT_FILE_NAME}.h)
   add_custom_command(
     OUTPUT ${OUTPUT_FILE}

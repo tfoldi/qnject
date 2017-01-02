@@ -157,7 +157,8 @@ namespace vaccine {
     s_swagger_json["host"] = std::string("localhost:") + http_port;
 
     /* mount UI. TODO: search for the right path */
-    s_http_server_opts.document_root = "./elm-street"; 
+    if (getenv("VACCINE_WEBROOT"))
+      s_http_server_opts.document_root = getenv("VACCINE_WEBROOT");
 
     /* socket bind, document root set, ready to serve */
     state = mg_state::RUNNING;
