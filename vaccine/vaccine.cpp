@@ -66,14 +66,19 @@ namespace vaccine {
   };
 
   // get parsed json object from a http PUT/POST data req
+  // TODO: test coverage 
   void parse_request_body(struct http_message *hm, nlohmann::json & req)
   {
+    req["uri"] = std::string(hm->uri.p, hm->uri.len);
+    req["method"] = std::string(hm->method.p, hm->method.len);
+    req["query"] = std::string(hm->query_string.p, hm->query_string.len);
+
     if ( hm->body.len > 0 ) {
       std::string s(hm->body.p, hm->body.len);
       try {
-        req = nlohmann::json::parse(s);
+        req["body"] = nlohmann::json::parse(s);
       } catch (std::exception & ex ) {
-        DLOG_F(ERROR, "Request body: %s", ex.what());
+        DLOG_F(ERROR, "Cannot parse request body: %s", ex.what());
       }
     }
   }

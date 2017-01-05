@@ -13,9 +13,6 @@
                                 "appName": {
                                     "type": "string"
                                 },
-                                "uri": {
-                                    "type": "string"
-                                },
                                 "qApp": {
                                     "type": "string"
                                 },

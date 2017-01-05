@@ -33,3 +33,4 @@ vaccine/tests/qt_testapp/qt_testapp
 *.pro.user
 ui_*.h
 build-qt_testapp*
+tags
