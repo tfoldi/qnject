@@ -42,7 +42,7 @@ namespace vaccine {
 
     LOG_SCOPE_FUNCTION(INFO);
 
-    sprintf(buf,"qApp:%p",qApp);
+    sprintf(buf,"%p",qApp);
 
     resp["qApp"] = buf;
     resp["appName"] = qPrintable(QApplication::applicationName());
