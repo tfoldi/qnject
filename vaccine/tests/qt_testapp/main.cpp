@@ -18,14 +18,16 @@ int main(int argc, char *argv[])
 {
   std::thread test_thread;
   
-  // start tests in separate thread if we have RUN_TESTS defined
-  if (getenv("RUN_TESTS")) 
-    test_thread = std::thread(start_catch,argc,argv);
-
   // running the Qt show
   QApplication a(argc, argv);
   MainWindow w;
   w.show();
+  
+  // start tests in separate thread if we have RUN_TESTS defined
+  if (getenv("RUN_TESTS")) 
+    test_thread = std::thread(start_catch,argc,argv);
+
+  // start application
   int ret = a.exec();
 
   // join catch thread if joinable
