@@ -1,4 +1,4 @@
-# Generate json.h files from json path definitions 
+# Generate json.h files from json path definitions
 file(GLOB_RECURSE COMPILED_RESOURCES "*.json")
 foreach(INPUT_FILE ${COMPILED_RESOURCES})
   get_filename_component(INPUT_FILE_NAME ${INPUT_FILE} NAME CACHE)
@@ -16,12 +16,12 @@ if(WITH_QT)
   set(VACCINE_QT_SOURCES qobject.cpp)
 endif()
 
-# On linux/freebsd/osx we are up for a shared library 
-add_library(qnject SHARED 
+# On linux/freebsd/osx we are up for a shared library
+add_library(qnject SHARED
   vaccine.cpp vaccine.h
-  echo.cpp 
-  utils.hpp 
-  lib_preload/dyld_insert.cpp 
+  echo.cpp
+  utils.hpp
+  lib_preload/dyld_insert.cpp
   ../deps/mongoose/mongoose.c
   ../deps/mongoose/mongoose.h
   ../deps/loguru/loguru.hpp
@@ -31,7 +31,7 @@ add_library(qnject SHARED
   )
 
 if(WITH_QT)
-  # link with qt libraries 
+  # link with qt libraries
   target_link_libraries(qnject Qt5::Core Qt5::Widgets ${CMAKE_THREAD_LIBS_INIT})
 else(WITH_QT)
   # add libdl (automatically added by qt for qt builds)
