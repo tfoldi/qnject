@@ -1,4 +1,4 @@
-#include "../config.h"
+#include "qnject_config.h"
 #if HAVE_QT5CORE && HAVE_QT5WIDGETS 
 
 #include <dlfcn.h>

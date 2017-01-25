@@ -34,3 +34,4 @@ vaccine/tests/qt_testapp/qt_testapp
 ui_*.h
 build-qt_testapp*
 tags
+qnject_config.h

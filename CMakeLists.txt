@@ -37,7 +37,11 @@ if(NOT RESOURCE_COMPILER)
     message(FATAL_ERROR "You must have xxd in order to build qnject" )
 endif()
 
-configure_file(config.h.in config.h)
+
+# Make sure we can find the qnject_config.h file even in out of source builds
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+configure_file(config.h.in qnject_config.h)
 
 enable_testing()
 add_subdirectory(vaccine)
