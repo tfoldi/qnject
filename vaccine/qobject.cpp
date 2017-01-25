@@ -91,6 +91,7 @@ namespace vaccine {
     if ( uri == "qwidgets" && is_request_method(hm,"GET") ) {
       get_all_qwidgets(req,resp);
     } else if ( splitURI.size() == 2 && is_request_method(hm,"GET") ) {
+      DLOG_F(INFO, "Requesting data from object %s", objectName);
       with_object(objectName, statusCode, [&](QObject * obj) {
           const QMetaObject* metaObject = obj->metaObject();
 
