@@ -1,4 +1,4 @@
-#include "../../config.h"
+#include "qnject_config.h"
 
 #include <stdio.h>
 #include <unistd.h>
