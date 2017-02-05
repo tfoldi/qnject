@@ -37,7 +37,7 @@ TEST_CASE("QT Widget tests", "[qt]") {
           json ret = json::parse( std::string(hm->body.p, hm->body.len));
           CHECK( ret["appName"].get<std::string>() == "qt_testapp" );
           CHECK( strtoll(ret["qApp"].get<std::string>().c_str(), NULL, 0) == (long long)qApp);
-          CHECK( ret["widgets"].size() >= 12 );
+          CHECK( ret["widgets"].size() >= 10 );
           });
 
     }
