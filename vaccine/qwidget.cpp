@@ -18,7 +18,8 @@
 
 #include "utils.hpp"
 #include "vaccine.h"
-#include "qobject.json.h"
+#include "qwidget.json.h"
+
 
 namespace vaccine {
 
@@ -145,8 +146,8 @@ namespace vaccine {
 
   __attribute__((constructor))
     static void initializer(void) {
-      DLOG_F(INFO, "Register qobject service");
-      vaccine::register_callback("qwidgets", qwidget_handler, qobject_json);
+      DLOG_F(INFO, "Register qwidget service");
+      vaccine::register_callback("qwidgets", qwidget_handler, qwidget_json);
     }
 
 }

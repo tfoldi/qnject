@@ -13,7 +13,7 @@ foreach(INPUT_FILE ${COMPILED_RESOURCES})
 endforeach()
 
 if(WITH_QT)
-  set(VACCINE_QT_SOURCES qobject.cpp)
+  set(VACCINE_QT_SOURCES qwidget.cpp tableau.cpp)
 endif()
 
 # On linux/freebsd/osx we are up for a shared library
@@ -29,6 +29,10 @@ add_library(qnject SHARED
   ${VACCINE_QT_SOURCES}
   ${COMPILED_RESOURCES}
   )
+
+if(MACOSX)
+  set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -undefined dynamic_lookup" )
+endif(MACOSX)
 
 if(WITH_QT)
   # link with qt libraries

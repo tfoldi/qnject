@@ -156,6 +156,15 @@ namespace vaccine {
     /* Open listening socket */
     mg_mgr_init(&mgr, NULL);
     nc = mg_bind(&mgr, http_port, ev_handler);
+
+    /* handle if we cannot bind that socket */
+    if (!nc) {
+      DLOG_F(ERROR, "Cannot bind web service on port %s", http_port);
+      mg_mgr_free(&mgr);
+      state = mg_state::NOT_RUNNING;
+      return;
+    }
+
     mg_set_protocol_http_websocket(nc);
 
     /* set listing host as baseuri */
