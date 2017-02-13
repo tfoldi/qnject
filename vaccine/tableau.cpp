@@ -12,6 +12,15 @@
 #include <QByteArray>
 #include <QMetaObject>
 #include <QMetaProperty>
+#include <QItemSelectionModel>
+#include <QAbstractTableModel>
+#include <QListWidget>
+#include <QListView>
+#include <QException>
+#include <QMap>
+#include <QVariant>
+#include <QDebug>
+
 
 #include "../deps/loguru/loguru.hpp"
 #include "../deps/json/json.hpp"
@@ -20,9 +29,17 @@
 #include "vaccine.h"
 
 
-QObject * (*filter_model)(QObject*) = (QObject * (*)(QObject*)) dlsym( RTLD_DEFAULT, "_ZNK32QuickFilterCategoricalWidget_Old14GetFilterModelEv");
-//QObject * (*filter_model)(QObject*) = (QObject * (*)(QObject*)) dlsym( RTLD_DEFAULT, "_ZNK32QuickFilterCategoricalWidget_Old8GetModelEv");
+static void (*toggle_check)(QObject*,int, QList<QModelIndex> const&) = (void(*)(QObject*,int, QList<QModelIndex> const&)) dlsym( RTLD_DEFAULT, "_ZN14CheckListModel12SetRadioModeEb");
+static void (*set_radio_mode)(QObject*,bool) = (void(*)(QObject*,bool)) dlsym( RTLD_DEFAULT, "_ZN14CheckListModel12SetRadioModeEb");
 
+nlohmann::json get_all_superclass(QObject * obj) {
+  nlohmann::json ret;
+
+  for ( auto super = obj->metaObject()->superClass(); strcmp(super->className(),"QObject") != 0; super = super->superClass() )
+    ret.push_back( super->className() );
+
+  return ret;
+}
 
 namespace vaccine {
 
@@ -41,10 +58,10 @@ namespace vaccine {
     }
 
   void tableau_handler( 
-      std::string & uri, 
-      struct mg_connection *nc,  
-      void *ev_data,            
-      struct http_message *hm)
+                       std::string & uri, 
+                       struct mg_connection *nc,  
+                       void *ev_data,            
+                       struct http_message *hm)
   {
     nlohmann::json resp, req;
     int statusCode = 200;
@@ -57,29 +74,57 @@ namespace vaccine {
       objectName = splitURI[1].c_str();
 
     DLOG_F(INFO, "Serving URI: \"%s %s\" with post data >>>%.*s<<<", 
-        req["method"].get<std::string>().c_str(),
-        uri.c_str(),
-        (int)hm->body.len,
-        hm->body.p);
+           req["method"].get<std::string>().c_str(),
+           uri.c_str(),
+           (int)hm->body.len,
+           hm->body.p);
 
 
     // Distpatch URI handlers in a big fat branch
     // 
-    if (uri == "tableau" ) {
+    if (uri == "tableau/filter" ) {
       with_object("QuickFilterCategoricalWidgetSample - Superstorenone:Segment:nk", statusCode, [&](QObject * obj) {
-          if (filter_model) {
-          DLOG_F(INFO, "calling filter model. obj=%p, filter_model=%p", obj, filter_model);
-          QObject * ret = filter_model(obj);
+        for( QAbstractItemModel * child : obj->findChildren<QAbstractItemModel *>() ) {
+          resp["children"].push_back( 
+                                     { {"objectName",  qPrintable(child->objectName())},
+                                       {"parentName", child->parent() ? qPrintable(child->parent()->objectName()) : "" },
+                                       {"className", child->metaObject()->className() },
+                                       {"superClass", get_all_superclass(child)} }
+                                    );
 
-          DLOG_F(INFO, "filter model done, ret=%p", ret);
- //         DLOG_F(INFO, "metaObject==%p", ret->metaObject());
+          if (! strcmp(child->metaObject()->className(),"CheckListModel") ) {
+            QAbstractItemModel * atm = child; 
 
-//          resp["superClass"] = ret->metaObject()->superClass()->className();
-//          resp["retobj"] = ret->metaObject()->className();
+            DLOG_F(INFO, "CLM ! %s rows: %d, c %d", child->metaObject()->className(), atm->rowCount(),
+                   atm->columnCount()); 
+            for ( auto i = 0; i < atm->rowCount() ; i++ ) { 
+              try {
+                QModelIndex items = atm->index(i,0); 
+
+                if ( i == 2 && atm->rowCount() == 4) {
+                  QList<QModelIndex> checked;
+                  checked.append(items);
+                  DLOG_F(INFO, "Break me here");
+                }
+
+
+                if (items.isValid() ) {
+                  auto data = atm->data(items, Qt::CheckStateRole); 
+                  DLOG_F(INFO, "row: %d, col: %d, data: %s", items.row(), items.column(), qPrintable( data.toString() ) ); 
+                } else {
+                  DLOG_F(ERROR, "row: %d, col: %d, type: %s", items.row(), items.column(), "invalid"); 
+                }
+              } catch (...) {
+                DLOG_F(ERROR, "Exception");
+              }
+
+            }
+
           } else {
-          statusCode = 404;
+            statusCode = 404;
           }
-          });
+        }
+      });
     } else {
       statusCode = 404;
       resp["error"] = "Method not found";
@@ -91,7 +136,7 @@ namespace vaccine {
   __attribute__((constructor))
     static void initializer(void) {
       DLOG_F(INFO, "Register tableau service");
-      vaccine::register_callback("tableau", tableau_handler, NULL);
+      vaccine::register_callback("filter", tableau_handler, NULL);
     }
 
 }
