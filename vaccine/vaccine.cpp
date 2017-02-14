@@ -15,6 +15,8 @@
 #define VACCINE_API_PREFIX "/api"
 #define VACCINE_SWAGGER_JSON "/swagger.json"
 
+
+// Short helpers for the main HTTP loop
 // TODO: refactor me to something like HTTP_HELPERS
 namespace {
   using namespace vaccine;
@@ -50,6 +52,37 @@ namespace {
     // TODO: refactor the handlers to have paths beginning with slash, then remove this + 1
     return uri.substr( API_PREFIX_LEN + 1, std::string::npos);
   }
+
+
+  // Helper that wraps runnning a handler with exception wrapping and logging.
+  template <typename HandlerMap>
+  void run_http_handler(HandlerMap& handlers, struct mg_connection* nc, void* ev_data, struct http_message* hm, const std::string& uri) {
+    // Get the name of the handler
+    std::string handler = get_handler_name(uri);
+
+    DLOG_SCOPE_F(INFO, "API request: '%.*s %s' => %s",
+        (int)hm->method.len, hm->method.p, uri.c_str(), handler.c_str());
+
+    // no handler? error!
+    if (handlers.count(handler) != 1) {
+      mg_http_send_error(nc, 404, "Handler not registred");
+      return;
+    }
+
+    // Run a wrapped handler
+    try {
+      // Since the handler expects an lvalue, we have to do this in two steps
+      std::string api_path(get_vaccine_api_path(uri));
+      handlers[handler]( api_path, nc, ev_data, hm);
+    } catch (std::exception & ex) {
+      DLOG_F(ERROR, "Caught exception: %s", ex.what() );
+      mg_http_send_error(nc, 500, ex.what() );
+    } catch (...) {
+      DLOG_F(ERROR, "Unknown exception occured");
+      mg_http_send_error(nc, 500, "Unknwown error (exception)" );
+    }
+  }
+
 }
 
 namespace vaccine {
@@ -129,6 +162,8 @@ namespace vaccine {
     mg_send(nc,d.c_str(),d.length());
   }
 
+  ////////////////////////////////////////////////////////////
+
   // this is our big fat HTTP event handler
   //
   // if URI starts with /api then it calls the matching handler
@@ -167,28 +202,11 @@ namespace vaccine {
       return;
     }
 
-    // Get the name of the handler
-    std::string handler = get_handler_name(uri);
-
-    DLOG_SCOPE_F(INFO, "API request: '%.*s %s' => %s",
-        (int)hm->method.len, hm->method.p, uri.c_str(), handler.c_str());
-
-    // call registred handler
-    if ( s_uri_handlers.count(handler) == 1 ) {
-      try {
-        // Since the handler expects an lvalue, we have to do this in two steps
-        std::string api_path(get_vaccine_api_path(uri));
-        s_uri_handlers[handler]( api_path, nc, ev_data, hm);
-      } catch (std::exception & ex) {
-        mg_http_send_error(nc, 500, ex.what() );
-      } catch (...) {
-        mg_http_send_error(nc, 500, "Unknwown error (exception)" );
-      }
-    } else {
-      mg_http_send_error(nc, 404, "Handler not registred");
-    }
+    // If we made it this far, we need to dispatch to an API handler
+    run_http_handler(s_uri_handlers, nc, ev_data, hm, uri);
   }
 
+  ////////////////////////////////////////////////////////////
 
   // simply start our HTTP server thread
   void start_thread() {
