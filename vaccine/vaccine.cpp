@@ -144,7 +144,6 @@ namespace vaccine {
 
     // check the validity of the url
     if (!is_valid_URI(hm)) {
-      DLOG_F(INFO, "Got empty URL.");
       mg_http_send_error(nc, 204, "No content" );
       return;
     }
@@ -161,11 +160,9 @@ namespace vaccine {
     }
 
 
-    // if its not the swagger and not an API call, then server
-    // anything static.
+    // if its not the swagger and not an API call, then serve anything static.
     // TODO: check for POST, only GETs should work
     if (!starts_with(uri, PREFIX_VACCINE_API)) {
-      // static web shit
       mg_serve_http(nc, hm, s_http_server_opts);
       return;
     }
