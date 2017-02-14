@@ -29,7 +29,7 @@
 #include "vaccine.h"
 
 
-static void (*toggle_check)(QObject*,int, QList<QModelIndex> const&) = (void(*)(QObject*,int, QList<QModelIndex> const&)) dlsym( RTLD_DEFAULT, "_ZN14CheckListModel12SetRadioModeEb");
+static void (*toggle_check)(QObject*,int, QList<QModelIndex> const&) = (void(*)(QObject*,int, QList<QModelIndex> const&)) dlsym( RTLD_DEFAULT, "_ZN14CheckListModel11ToggleCheckEiRK5QListI11QModelIndexE");
 static void (*set_radio_mode)(QObject*,bool) = (void(*)(QObject*,bool)) dlsym( RTLD_DEFAULT, "_ZN14CheckListModel12SetRadioModeEb");
 
 nlohmann::json get_all_superclass(QObject * obj) {
@@ -65,25 +65,26 @@ namespace vaccine {
   {
     nlohmann::json resp, req;
     int statusCode = 200;
-    const char * objectName = "";
+    std::string objectName = "";
     std::vector<std::string> splitURI = split(uri.c_str(),'/');
 
     // get request data
     parse_request_body(hm,req);
-    if (splitURI.size() > 1)
-      objectName = splitURI[1].c_str();
+    if (splitURI.size() > 2)
+      objectName = urldecode2(splitURI[2]);
 
-    DLOG_F(INFO, "Serving URI: \"%s %s\" with post data >>>%.*s<<<", 
+    DLOG_F(INFO, "Serving URI: \"%s %s\" with post data >>>%.*s<<< on object %s", 
            req["method"].get<std::string>().c_str(),
            uri.c_str(),
            (int)hm->body.len,
-           hm->body.p);
+           hm->body.p,
+           objectName.c_str());
 
 
     // Distpatch URI handlers in a big fat branch
-    // 
-    if (uri == "tableau/filter" ) {
-      with_object("QuickFilterCategoricalWidgetSample - Superstorenone:Segment:nk", statusCode, [&](QObject * obj) {
+    // test URI: QuickFilterCategoricalWidgetSample - Superstorenone:Segment:nk
+    if (splitURI[0] == "tableau" && splitURI[1] == "filter" and objectName != "" ) {
+      with_object(objectName.c_str(), statusCode, [&](QObject * obj) {
         for( QAbstractItemModel * child : obj->findChildren<QAbstractItemModel *>() ) {
           resp["children"].push_back( 
                                      { {"objectName",  qPrintable(child->objectName())},
@@ -92,7 +93,7 @@ namespace vaccine {
                                        {"superClass", get_all_superclass(child)} }
                                     );
 
-          if (! strcmp(child->metaObject()->className(),"CheckListModel") ) {
+          if (! strcmp(child->metaObject()->className(),"CheckListModel") && child->rowCount() == 4 /* XXX */ ) {
             QAbstractItemModel * atm = child; 
 
             DLOG_F(INFO, "CLM ! %s rows: %d, c %d", child->metaObject()->className(), atm->rowCount(),
@@ -101,15 +102,14 @@ namespace vaccine {
               try {
                 QModelIndex items = atm->index(i,0); 
 
-                if ( i == 2 && atm->rowCount() == 4) {
-                  QList<QModelIndex> checked;
-                  checked.append(items);
-                  DLOG_F(INFO, "Break me here");
-                }
-
-
                 if (items.isValid() ) {
+                  if ( req["body"].is_object() && req["body"]["toggle"].is_object() && req["body"]["toggle"]["row"].get<int>() == items.row() ) {
+                    DLOG_F(INFO, "Toggle checkbox on row: %d to %d", items.row(), req["body"]["toggle"]["value"].get<int>());
+                    toggle_check(atm, req["body"]["toggle"]["value"].get<int>(), QList<QModelIndex>({items}));
+                  }
+
                   auto data = atm->data(items, Qt::CheckStateRole); 
+                  resp["rows"][items.row()] = qPrintable(data.toString());
                   DLOG_F(INFO, "row: %d, col: %d, data: %s", items.row(), items.column(), qPrintable( data.toString() ) ); 
                 } else {
                   DLOG_F(ERROR, "row: %d, col: %d, type: %s", items.row(), items.column(), "invalid"); 
@@ -136,7 +136,7 @@ namespace vaccine {
   __attribute__((constructor))
     static void initializer(void) {
       DLOG_F(INFO, "Register tableau service");
-      vaccine::register_callback("filter", tableau_handler, NULL);
+      vaccine::register_callback("tableau", tableau_handler, NULL);
     }
 
 }
