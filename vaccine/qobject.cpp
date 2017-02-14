@@ -1,5 +1,5 @@
 #include "qnject_config.h"
-#if HAVE_QT5CORE && HAVE_QT5WIDGETS 
+#if HAVE_QT5CORE && HAVE_QT5WIDGETS
 
 #include <dlfcn.h>
 #include <map>
@@ -33,10 +33,10 @@ namespace vaccine {
       }
     }
 
-  void qobject_handler( 
-      std::string & uri, 
-      struct mg_connection *nc,  
-      void *ev_data,            
+  void qobject_handler(
+      const std::string& uri,
+      struct mg_connection *nc,
+      void *ev_data,
       struct http_message *hm)
   {
     nlohmann::json resp, req;
@@ -49,7 +49,7 @@ namespace vaccine {
       objectName = req["object"].get<std::string>().c_str();
 
     // URI handlers in a big fat branch
-    // 
+    //
     if ( uri == "qobject" || uri == "qobject/list" ) {
       char buf[40];
       sprintf(buf,"qApp:%p",qApp);
@@ -61,7 +61,7 @@ namespace vaccine {
       // All widgets
       for( QWidget * child : qApp->allWidgets() ) {
         if (child && child->objectName() != "")  {
-          resp["widgets"].push_back( 
+          resp["widgets"].push_back(
               {
                 {"objectName",  qPrintable(child->objectName())},
                 {"parentName", child->parent() ? qPrintable(child->parent()->objectName()) : "" },
@@ -104,7 +104,7 @@ namespace vaccine {
           QByteArray bytes;
           QBuffer buffer(&bytes);
           buffer.open(QIODevice::WriteOnly);
-          obj->grab().save(&buffer, "PNG"); 
+          obj->grab().save(&buffer, "PNG");
 
           mg_send_head(nc, 200, bytes.length(), "Content-Type: image/png");
           mg_send(nc, bytes.constData() ,bytes.length());
