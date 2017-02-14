@@ -15,15 +15,64 @@
 #define VACCINE_API_PREFIX "/api"
 #define VACCINE_SWAGGER_JSON "/swagger.json"
 
+// TODO: refactor me to something like HTTP_HELPERS
+namespace {
+  using namespace vaccine;
+
+
+  // declare these strings, so const char*-s wont get converted to std::string for every call
+  const std::string PREFIX_VACCINE_API(VACCINE_API_PREFIX);
+  const std::string PREFIX_VACCINE_SWAGGER_JSON(VACCINE_SWAGGER_JSON);
+
+
+  // Checks if a string starts with another string
+  bool starts_with( const std::string& s, const std::string& prefix ) {
+    // prefix too long
+    if (prefix.size() > s.size()) return false;
+    return strncmp( s.c_str(), prefix.c_str(), prefix.size() ) == 0;
+  }
+
+  // Checks if an incoming URL is actually valid
+  bool is_uri_valid(struct http_message* hm) {
+    return (hm->uri.p != nullptr) && (hm->uri.len > 0);
+  }
+
+
+  // Checks if a request matches the vaccine url prefix
+  bool uri_matches_vaccine_api(const std::string& uri) {
+    return starts_with(uri, PREFIX_VACCINE_API);
+  }
+
+  // Checks if a request matches the swagger json route
+  bool uri_matches_swagger_json(const std::string& uri) {
+    return starts_with(uri, PREFIX_VACCINE_SWAGGER_JSON);
+  }
+
+
+  // Takes a URI and tries to get the handler name from it
+  std::string get_handler_name(const std::string& uri) {
+    // TODO: vector of string for a single element?
+    return split( uri.c_str(), '/' )[1];
+  }
+
+  // Returns the path after VACCINE_API_PREFIX
+  std::string get_vaccine_api_path( const std::string uri ) {
+    static const size_t API_PREFIX_LEN = strlen(VACCINE_API_PREFIX);
+    // Get the actual API path (if prefix is "/api" "/api/" should be removed
+    // TODO: refactor the handlers to have paths beginning with slash, then remove this + 1
+    return uri.substr( API_PREFIX_LEN + 1, std::string::npos);
+  }
+}
+
 namespace vaccine {
 
-  // vaccine's state. read and write carefully 
+  // vaccine's state. read and write carefully
   mg_state state = UNINITALIZED;
 
-  // default port, can be override by VACCINE_HTTP_PORT env variable 
+  // default port, can be override by VACCINE_HTTP_PORT env variable
   static constexpr auto s_default_http_port = "8000";
 
-  // options for our http server. 
+  // options for our http server.
   // XXX: this could be local var I guess using user_data
   static struct mg_serve_http_opts s_http_server_opts;
 
@@ -40,28 +89,28 @@ namespace vaccine {
           }
         },
         {"basePath", VACCINE_API_PREFIX },
-        {"paths", nlohmann::json({}) }   
+        {"paths", nlohmann::json({}) }
         });
 
   // return with swagger_json file
   const nlohmann::json swagger_json() { return s_swagger_json; }
 
   // simply push the callback function into our big map of handlers
-  // this function is called from our handler "plugins" 
-  void register_callback(std::string handler, t_vaccine_api_handler function, 
-      const unsigned char * swagger_spec) 
+  // this function is called from our handler "plugins"
+  void register_callback(std::string handler, t_vaccine_api_handler function,
+      const unsigned char * swagger_spec)
   {
     s_uri_handlers[handler] = function;
     if (swagger_spec) {
       // Add handler to our swagger definition:
       // /<handler -> specification from json.h file
-      s_swagger_json["paths"].push_back( 
+      s_swagger_json["paths"].push_back(
           { "/" + handler, nlohmann::json::parse(swagger_spec)} );
     }
   }
 
   // const getter for the registred handlers
-  const std::map<std::string, t_vaccine_api_handler> registered_handlers() { 
+  const std::map<std::string, t_vaccine_api_handler> registered_handlers() {
     return s_uri_handlers;
   };
 
@@ -79,9 +128,9 @@ namespace vaccine {
   }
 
   // send json response to the client
-  void send_json(struct mg_connection *nc, nlohmann::json & j, int statusCode) 
+  void send_json(struct mg_connection *nc, nlohmann::json & j, int statusCode)
   {
-    static const auto headers = 
+    static const auto headers =
       "Access-Control-Allow-Origin: *\r\n"
       "Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept\r\n"
       "Content-Type: application/json";
@@ -102,41 +151,61 @@ namespace vaccine {
   static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
     struct http_message *hm = (struct http_message *) ev_data;
     std::string uri;
-    std::vector<std::string> v_url;
+    // std::vector<std::string> v_url;
 
     switch (ev) {
-      case MG_EV_HTTP_REQUEST:
+      case MG_EV_HTTP_REQUEST: {
+
+        // check the validity of the url
+        if (!is_uri_valid(hm)) {
+          DLOG_F(INFO, "Got empty URL.");
+          mg_http_send_error(nc, 204, "No content" );
+          break;
+        }
+
+        // check if we are on the API path. This should be safe at this point
         uri.assign(hm->uri.p, hm->uri.len);
-        v_url = split(hm->uri,'/');
 
-        if ( get_until_char(uri,'/',1) == VACCINE_API_PREFIX ) {
-          // API request
-          std::string api_path(hm->uri.p + sizeof(VACCINE_API_PREFIX), hm->uri.len - sizeof(VACCINE_API_PREFIX));
-          std::string handler = v_url[1];
-         
-          DLOG_SCOPE_F(INFO, "API request: '%.*s %s' => %s", 
-              (int)hm->method.len, hm->method.p, uri.c_str(), handler.c_str());
 
-          // call registred handler
-          if ( s_uri_handlers.count(handler) == 1 ) {
-            try {
-              s_uri_handlers[handler](api_path,nc,ev_data,hm);
-            } catch (std::exception & ex) {
-              mg_http_send_error(nc, 500, ex.what() );
-            } catch (...) {
-              mg_http_send_error(nc, 500, "Unknwown error (exception)" );
-            }
-          }
-          else 
-            mg_http_send_error(nc, 404, "Handler not registred");
-        } else if (get_until_char(uri,'/',1) == VACCINE_SWAGGER_JSON) {
-          DLOG_F(INFO, "Downloading" VACCINE_SWAGGER_JSON);
-          send_json(nc, s_swagger_json, 200);
-        } else {
+        // check if the URL is for the swagger json
+        if (uri_matches_swagger_json(uri)) {
+            DLOG_F(INFO, "Downloading " VACCINE_SWAGGER_JSON);
+            send_json(nc, s_swagger_json, 200);
+            break;
+        }
+
+
+        // if its not the swagger and not an API call, then server
+        // anything static.
+        // TODO: check for POST, only GETs should work
+        if (!uri_matches_vaccine_api(uri)) {
           // static web shit
-          mg_serve_http(nc, hm, s_http_server_opts); 
+          mg_serve_http(nc, hm, s_http_server_opts);
+          break;
+        }
+
+        // Get the name of the handler
+        std::string handler = get_handler_name(uri);
+
+        DLOG_SCOPE_F(INFO, "API request: '%.*s %s' => %s",
+            (int)hm->method.len, hm->method.p, uri.c_str(), handler.c_str());
+
+        // call registred handler
+        if ( s_uri_handlers.count(handler) == 1 ) {
+          try {
+            // Since the handler expects an lvalue, we have to do this in two steps
+            std::string api_path(get_vaccine_api_path(uri));
+            s_uri_handlers[handler]( api_path, nc, ev_data, hm);
+          } catch (std::exception & ex) {
+            mg_http_send_error(nc, 500, ex.what() );
+          } catch (...) {
+            mg_http_send_error(nc, 500, "Unknwown error (exception)" );
+          }
+        } else {
+          mg_http_send_error(nc, 404, "Handler not registred");
         }
         break;
+    }
       default:
         break;
     }
@@ -157,7 +226,7 @@ namespace vaccine {
     s_swagger_json["host"] = std::string("localhost:") + http_port;
 
     /* mount UI. TODO: search for the right path */
-    s_http_server_opts.document_root = "./elm-street"; 
+    s_http_server_opts.document_root = "./elm-street";
 
     /* socket bind, document root set, ready to serve */
     state = mg_state::RUNNING;
@@ -174,7 +243,7 @@ namespace vaccine {
   }
 
   // waits until vaccine is up and runnig. optional timeout in ms, -1 infinity
-  void wait_until_vaccine_is_running(int usecs) 
+  void wait_until_vaccine_is_running(int usecs)
   {
     // make sure we're running
     static const auto poll_sleep = 1000;
