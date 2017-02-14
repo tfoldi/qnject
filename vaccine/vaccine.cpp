@@ -33,21 +33,9 @@ namespace {
   }
 
   // Checks if an incoming URL is actually valid
-  bool is_uri_valid(struct http_message* hm) {
+  bool is_valid_URI(struct http_message* hm) {
     return (hm->uri.p != nullptr) && (hm->uri.len > 0);
   }
-
-
-  // Checks if a request matches the vaccine url prefix
-  bool uri_matches_vaccine_api(const std::string& uri) {
-    return starts_with(uri, PREFIX_VACCINE_API);
-  }
-
-  // Checks if a request matches the swagger json route
-  bool uri_matches_swagger_json(const std::string& uri) {
-    return starts_with(uri, PREFIX_VACCINE_SWAGGER_JSON);
-  }
-
 
   // Takes a URI and tries to get the handler name from it
   std::string get_handler_name(const std::string& uri) {
@@ -149,67 +137,61 @@ namespace vaccine {
   // TODO: refactor, move out HTTP_REQUEST handling and use split string
   // instead of has prefix and other mg_str crap
   static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
+    // if not HTTP request, dont care about it for now
+    if (ev != MG_EV_HTTP_REQUEST) { return; }
+
     struct http_message *hm = (struct http_message *) ev_data;
-    std::string uri;
-    // std::vector<std::string> v_url;
 
-    switch (ev) {
-      case MG_EV_HTTP_REQUEST: {
-
-        // check the validity of the url
-        if (!is_uri_valid(hm)) {
-          DLOG_F(INFO, "Got empty URL.");
-          mg_http_send_error(nc, 204, "No content" );
-          break;
-        }
-
-        // check if we are on the API path. This should be safe at this point
-        uri.assign(hm->uri.p, hm->uri.len);
-
-
-        // check if the URL is for the swagger json
-        if (uri_matches_swagger_json(uri)) {
-            DLOG_F(INFO, "Downloading " VACCINE_SWAGGER_JSON);
-            send_json(nc, s_swagger_json, 200);
-            break;
-        }
-
-
-        // if its not the swagger and not an API call, then server
-        // anything static.
-        // TODO: check for POST, only GETs should work
-        if (!uri_matches_vaccine_api(uri)) {
-          // static web shit
-          mg_serve_http(nc, hm, s_http_server_opts);
-          break;
-        }
-
-        // Get the name of the handler
-        std::string handler = get_handler_name(uri);
-
-        DLOG_SCOPE_F(INFO, "API request: '%.*s %s' => %s",
-            (int)hm->method.len, hm->method.p, uri.c_str(), handler.c_str());
-
-        // call registred handler
-        if ( s_uri_handlers.count(handler) == 1 ) {
-          try {
-            // Since the handler expects an lvalue, we have to do this in two steps
-            std::string api_path(get_vaccine_api_path(uri));
-            s_uri_handlers[handler]( api_path, nc, ev_data, hm);
-          } catch (std::exception & ex) {
-            mg_http_send_error(nc, 500, ex.what() );
-          } catch (...) {
-            mg_http_send_error(nc, 500, "Unknwown error (exception)" );
-          }
-        } else {
-          mg_http_send_error(nc, 404, "Handler not registred");
-        }
-        break;
+    // check the validity of the url
+    if (!is_valid_URI(hm)) {
+      DLOG_F(INFO, "Got empty URL.");
+      mg_http_send_error(nc, 204, "No content" );
+      return;
     }
-      default:
-        break;
+
+    // check if we are on the API path. This should be safe at this point
+    std::string uri(hm->uri.p, hm->uri.len);
+
+
+    // check if the URL is for the swagger json
+    if (starts_with(uri, PREFIX_VACCINE_SWAGGER_JSON)) {
+      DLOG_F(INFO, "Downloading " VACCINE_SWAGGER_JSON);
+      send_json(nc, s_swagger_json, 200);
+      return;
+    }
+
+
+    // if its not the swagger and not an API call, then server
+    // anything static.
+    // TODO: check for POST, only GETs should work
+    if (!starts_with(uri, PREFIX_VACCINE_API)) {
+      // static web shit
+      mg_serve_http(nc, hm, s_http_server_opts);
+      return;
+    }
+
+    // Get the name of the handler
+    std::string handler = get_handler_name(uri);
+
+    DLOG_SCOPE_F(INFO, "API request: '%.*s %s' => %s",
+        (int)hm->method.len, hm->method.p, uri.c_str(), handler.c_str());
+
+    // call registred handler
+    if ( s_uri_handlers.count(handler) == 1 ) {
+      try {
+        // Since the handler expects an lvalue, we have to do this in two steps
+        std::string api_path(get_vaccine_api_path(uri));
+        s_uri_handlers[handler]( api_path, nc, ev_data, hm);
+      } catch (std::exception & ex) {
+        mg_http_send_error(nc, 500, ex.what() );
+      } catch (...) {
+        mg_http_send_error(nc, 500, "Unknwown error (exception)" );
+      }
+    } else {
+      mg_http_send_error(nc, 404, "Handler not registred");
     }
   }
+
 
   // simply start our HTTP server thread
   void start_thread() {
