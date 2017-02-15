@@ -4,5 +4,7 @@ env:
   - USE_CLANG=false USE_QT=true
   - USE_CLANG=true USE_QT=false
   - USE_CLANG=true USE_QT=true
+before_script:
+  - nix-shell --run true >> /dev/null 2>&1 || nix-shell --run true
 script:
   - nix-build --arg use_clang $USE_CLANG --arg use_qt $USE_QT
