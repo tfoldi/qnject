@@ -57,6 +57,20 @@ namespace vaccine {
       }
     }
 
+
+  enum RequestMethod {
+    kREQUEST_GET,
+    kREQUEST_POST,
+  };
+
+  // Checks if the request is a message
+  RequestMethod request_method(struct http_message* hm) {
+    static const struct mg_str GET =  mg_mk_str("GET");
+    if (mg_strcmp(hm->method, GET) == 0) return kREQUEST_GET;
+    else return kREQUEST_POST;
+  }
+
+
   void tableau_handler( 
                        std::string & uri, 
                        struct mg_connection *nc,  
@@ -67,6 +81,7 @@ namespace vaccine {
     int statusCode = 200;
     std::string objectName = "";
     std::vector<std::string> splitURI = split(uri.c_str(),'/');
+    RequestMethod method = request_method(hm);
 
     // get request data
     parse_request_body(hm,req);
@@ -93,6 +108,12 @@ namespace vaccine {
                                        {"superClass", get_all_superclass(child)} }
                                     );
 
+          // if we got a get request then there is no data for us
+          if (method == kREQUEST_GET) {
+            statusCode = 200;
+            return;
+          }
+
           if (! strcmp(child->metaObject()->className(),"CheckListModel") && child->rowCount() == 4 /* XXX */ ) {
             QAbstractItemModel * atm = child; 
 
@@ -116,6 +137,7 @@ namespace vaccine {
                 }
               } catch (...) {
                 DLOG_F(ERROR, "Exception");
+                statusCode = 500;
               }
 
             }
