@@ -1,7 +1,7 @@
 # Generate json.h files from json path definitions
-file(GLOB_RECURSE COMPILED_RESOURCES "*.json")
+file(GLOB COMPILED_RESOURCES "*.json")
 foreach(INPUT_FILE ${COMPILED_RESOURCES})
-  get_filename_component(INPUT_FILE_NAME ${INPUT_FILE} NAME CACHE)
+  get_filename_component(INPUT_FILE_NAME ${INPUT_FILE} NAME NOCACHE)
   set(OUTPUT_FILE ${INPUT_FILE_NAME}.h)
   add_custom_command(
     OUTPUT ${OUTPUT_FILE}
@@ -13,7 +13,7 @@ foreach(INPUT_FILE ${COMPILED_RESOURCES})
 endforeach()
 
 if(WITH_QT)
-  set(VACCINE_QT_SOURCES qobject.cpp)
+  set(VACCINE_QT_SOURCES qwidget.cpp tableau.cpp)
 endif()
 
 # On linux/freebsd/osx we are up for a shared library
@@ -29,6 +29,10 @@ add_library(qnject SHARED
   ${VACCINE_QT_SOURCES}
   ${COMPILED_RESOURCES}
   )
+
+if(MACOSX)
+  set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -undefined dynamic_lookup" )
+endif(MACOSX)
 
 if(WITH_QT)
   # link with qt libraries

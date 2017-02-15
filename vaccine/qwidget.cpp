@@ -3,6 +3,7 @@
 
 #include <dlfcn.h>
 #include <map>
+#include <vector>
 #include <QApplication>
 #include <QList>
 #include <QObject>
@@ -15,7 +16,10 @@
 #include "../deps/loguru/loguru.hpp"
 #include "../deps/json/json.hpp"
 
+#include "utils.hpp"
 #include "vaccine.h"
+#include "qwidget.json.h"
+
 
 namespace vaccine {
 
@@ -33,7 +37,34 @@ namespace vaccine {
       }
     }
 
-  void qobject_handler( 
+  void get_all_qwidgets(nlohmann::json const & req, nlohmann::json & resp)
+  {
+    char buf[40];
+
+    LOG_SCOPE_FUNCTION(INFO);
+
+    sprintf(buf,"%p",qApp);
+
+    resp["qApp"] = buf;
+    resp["appName"] = qPrintable(QApplication::applicationName());
+
+    // All widgets
+    for( QWidget * child : qApp->allWidgets() ) {
+      if (child && child->objectName() != "")  {
+        resp["widgets"].push_back( 
+            {
+            {"objectName",  qPrintable(child->objectName())},
+            {"parentName", child->parent() ? qPrintable(child->parent()->objectName()) : "" },
+            {"obectKind", "widget" },
+            {"className", child->metaObject()->className() },
+            {"superClass", child->metaObject()->superClass()->className() }
+            }
+            );
+      }
+    }
+  }
+
+  void qwidget_handler( 
       std::string & uri, 
       struct mg_connection *nc,  
       void *ev_data,            
@@ -42,53 +73,41 @@ namespace vaccine {
     nlohmann::json resp, req;
     int statusCode = 200;
     const char * objectName = "";
+    std::vector<std::string> splitURI = split(uri.c_str(),'/');
 
     // get request data
     parse_request_body(hm,req);
-    if ( req["object"] != nullptr && ! req["object"].empty() )
-      objectName = req["object"].get<std::string>().c_str();
+    if (splitURI.size() > 1)
+      objectName = splitURI[1].c_str();
 
-    // URI handlers in a big fat branch
+    DLOG_F(INFO, "Serving URI: \"%s %s\" with post data >>>%.*s<<<", 
+        req["method"].get<std::string>().c_str(),
+        uri.c_str(),
+        (int)hm->body.len,
+        hm->body.p);
+
+
+    // Distpatch URI handlers in a big fat branch
     // 
-    if ( uri == "qobject" || uri == "qobject/list" ) {
-      char buf[40];
-      sprintf(buf,"qApp:%p",qApp);
-
-      resp["uri"] = uri;
-      resp["qApp"] = buf;
-      resp["appName"] = qPrintable(QApplication::applicationName());
-
-      // All widgets
-      for( QWidget * child : qApp->allWidgets() ) {
-        if (child && child->objectName() != "")  {
-          resp["widgets"].push_back( 
-              {
-                {"objectName",  qPrintable(child->objectName())},
-                {"parentName", child->parent() ? qPrintable(child->parent()->objectName()) : "" },
-                {"obectKind", "widget" },
-                {"className", child->metaObject()->className() },
-                {"superClass", child->metaObject()->superClass()->className() }
-                }
-              );
-        }
-      }
-
-    } else if (uri == "qobject/getProperties") {
+    if ( uri == "qwidgets" && is_request_method(hm,"GET") ) {
+      get_all_qwidgets(req,resp);
+    } else if ( splitURI.size() == 2 && is_request_method(hm,"GET") ) {
+      DLOG_F(INFO, "Requesting data from object %s", objectName);
       with_object(objectName, statusCode, [&](QObject * obj) {
           const QMetaObject* metaObject = obj->metaObject();
 
           for(auto i = 0; i < metaObject->propertyCount(); ++i) {
-            const char * propertyName = metaObject->property(i).name();
-            QVariant val = metaObject->property(i).read( obj );
-            resp[ "properties" ].push_back( { propertyName, qPrintable(val.toString()), "meta" } );
+          const char * propertyName = metaObject->property(i).name();
+          QVariant val = metaObject->property(i).read( obj );
+          resp[ "properties" ].push_back( { propertyName, qPrintable(val.toString()), "meta" } );
           }
 
           for (auto qbaPropertyName : obj->dynamicPropertyNames() ) {
-            auto propertyName = qbaPropertyName.constData();
-            QVariant val = obj->property( propertyName );
-            resp[ "properties" ].push_back( { propertyName, qPrintable(val.toString()), "dynamic" } );
+          auto propertyName = qbaPropertyName.constData();
+          QVariant val = obj->property( propertyName );
+          resp[ "properties" ].push_back( { propertyName, qPrintable(val.toString()), "dynamic" } );
           }
-        });
+          });
     } else if (uri == "qobject/getProperty") {
       with_object(objectName, statusCode, [&](QObject * obj) {
           QVariant val = obj->property( req["name"].get<std::string>().c_str() );
@@ -118,6 +137,7 @@ namespace vaccine {
         resp["error"] = "Widget not found";
       }
     } else {
+      statusCode = 404;
       resp["error"] = "Method not found";
     }
 
@@ -126,8 +146,8 @@ namespace vaccine {
 
   __attribute__((constructor))
     static void initializer(void) {
-      DLOG_F(INFO, "Register qobject service");
-      vaccine::register_callback("qobject", qobject_handler);
+      DLOG_F(INFO, "Register qwidget service");
+      vaccine::register_callback("qwidgets", qwidget_handler, qwidget_json);
     }
 
 }

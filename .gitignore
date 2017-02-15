@@ -28,3 +28,10 @@ config.h
 vaccine/qnject_swagger_json
 install_manifest.txt
 vaccine/tests/swagger.json
+moc_*.cpp
+vaccine/tests/qt_testapp/qt_testapp
+*.pro.user
+ui_*.h
+build-qt_testapp*
+tags
+qnject_config.h

@@ -1,0 +1,47 @@
+        {
+            "get": {
+                "description": "Show top level window's widget and its child",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response with list of QWidgets",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "appName": {
+                                    "type": "string"
+                                },
+                                "qApp": {
+                                    "type": "string"
+                                },
+                                "widgets": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "className": {
+                                                "type": "string"
+                                            },
+                                            "obectKind": {
+                                                "type": "string"
+                                            },
+                                            "objectName": {
+                                                "type": "string"
+                                            },
+                                            "parentName": {
+                                                "type": "string"
+                                            },
+                                            "superClass": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }

@@ -37,6 +37,10 @@ if(NOT RESOURCE_COMPILER)
     message(FATAL_ERROR "You must have xxd in order to build qnject" )
 endif()
 
+# Add MACOSX define on OSXs
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(MACOSX TRUE)
+endif()
 
 # Make sure we can find the qnject_config.h file even in out of source builds
 include_directories(${CMAKE_CURRENT_BINARY_DIR})

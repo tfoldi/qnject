@@ -1,5 +1,0 @@
-TEST00 1 1.08272
-01_linked_unit 2 0.518459
-02_swagger_validation 0 0
----
-02_swagger_validation
