@@ -108,11 +108,6 @@ namespace vaccine {
                                        {"superClass", get_all_superclass(child)} }
                                     );
 
-          // if we got a get request then there is no data for us
-          if (method == kREQUEST_GET) {
-            statusCode = 200;
-            return;
-          }
 
           if (! strcmp(child->metaObject()->className(),"CheckListModel") && child->rowCount() == 4 /* XXX */ ) {
             QAbstractItemModel * atm = child; 
@@ -143,7 +138,7 @@ namespace vaccine {
             }
 
           } else {
-            statusCode = 404;
+            statusCode = (method == kREQUEST_GET) ? 200 : 404;
           }
         }
       });
