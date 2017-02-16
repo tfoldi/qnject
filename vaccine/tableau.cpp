@@ -20,6 +20,7 @@
 #include <QMap>
 #include <QVariant>
 #include <QDebug>
+#include <QMouseEvent>
 
 
 #include "../deps/loguru/loguru.hpp"
@@ -43,17 +44,6 @@ nlohmann::json get_all_superclass(QObject * obj) {
 
 namespace vaccine {
 
-  template<typename Functor>
-  void with_object(const char * objectName, int & statusCode, Functor functor)
-  {
-    statusCode = 404;
-    withObject( objectName, [&](QObject* o){
-        statusCode = 200;
-        functor(o);
-    });
-  }
-
-
   template <typename Fn>
   void with_object(const char* objectName, Fn fn) {
       for( QWidget * child : qApp->allWidgets() ) {
@@ -63,12 +53,23 @@ namespace vaccine {
       }
   }
 
+  template<typename Functor>
+  void with_object(const char * objectName, int & statusCode, Functor functor)
+  {
+    statusCode = 404;
+    with_object( objectName, [&](QObject* o){
+        statusCode = 200;
+        functor(o);
+    });
+  }
+
+
   // Apply the function on the children of an object that have the specified class name
   template <typename T, typename Fn>
   void with_children(QObject* o, const char* className, Fn fn) {
     for( T* child : o->findChildren<T*>() ) {
       // check for failiure signs
-      if (strcmp(child->metaObject()->className(),"CheckListModel") == 0) {
+      if (strcmp(child->metaObject()->className(),className) == 0) {
         fn(child);
       }
     }
@@ -139,6 +140,39 @@ namespace vaccine {
     // test URI: QuickFilterCategoricalWidgetSample - Superstorenone:Segment:nk
     if (splitURI[0] == "tableau" && splitURI[1] == "filter" and objectName != "" ) {
 
+#if 0
+      respond_with_children_of_object<QWidget>(objectName.c_str(), "QWidget", statusCode, [&](QWidget * child){
+        if ( child->objectName() == "qt_scrollarea_viewport" &&  method == kREQUEST_POST ) {
+          resp["children"].push_back( 
+                                     { {"objectName",  qPrintable(child->objectName())},
+                                       {"parentName", child->parent() ? qPrintable(child->parent()->objectName()) : "" },
+                                       {"className", child->metaObject()->className() },
+                                       {"superClass", get_all_superclass(child)} ,
+                                       {"visible", child->isVisible() ? "true" : "false" },
+                                       {"enabled", child->isEnabled() ? " true" : "false" }}
+                                    );
+        
+
+            qApp->postEvent( child, 
+                            new QMouseEvent( QEvent::MouseButtonPress, 
+                                                     QPointF(1,1),
+                                                      Qt::LeftButton,
+                                                      Qt::NoButton,
+                                                      Qt::NoModifier));
+            qApp->postEvent( child, 
+                            new QMouseEvent( QEvent::MouseButtonRelease, 
+                                                     QPointF(1,1),
+                                                      Qt::NoButton,
+                                                      Qt::LeftButton,
+                                                      Qt::NoModifier));
+
+            return;
+
+
+        }
+      });
+#endif 
+
       int rowsIdx = 0;
       respond_with_children_of_object<QAbstractItemModel>(objectName.c_str(), "CheckListModel", statusCode, [&](QAbstractItemModel* child){
 
@@ -175,6 +209,11 @@ namespace vaccine {
                       if ( req["body"].is_object() && req["body"]["toggle"].is_object() && req["body"]["toggle"]["row"].get<int>() == items.row() ) {
                         if (modelKey == req["body"]["toggle"]["modelPtr"].get<std::string>()) {
                           DLOG_F(INFO, "Toggle checkbox on row: %d to %d", items.row(), req["body"]["toggle"]["value"].get<int>());
+                          
+                          
+                          /*with_object(objectName.c_str(), statusCode, [&](QObject * obj) {
+
+                          });*/
                           toggle_check(child, req["body"]["toggle"]["value"].get<int>(), QList<QModelIndex>({items}));
                         }
                       }
