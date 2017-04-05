@@ -34,9 +34,6 @@ namespace {
     string name;
   };
 
-//   QObjectArg arg_from_qmeta_arg() {
-//     // for (int i =0, len = m.parameterCount; i < 
-//   }
 
   struct QObjectMethod {
     // PUBLIC, PRIVATE, PROTECTED
@@ -50,17 +47,7 @@ namespace {
     // The signature of the method
     string signature;
 
-    // vector<std::pair<string, string>> args;
   };
-
-
-//   QObjectMethod method_meta_from_qmeta_methods(const QMetaObject& m) {
-//     for (const auto& arg : m.para
-//     for (int i =0, len = m.parameterCount(); i < len; ++i) {
-//       auto param = m.parameter(
-//     }
-//   }
-
 
 
   // Converts a QObject method type to its string repr
@@ -166,7 +153,6 @@ namespace vaccine {
         // output the method information
         for (const auto& meth : methodList) {
           add_qobject_method_to_response(methods, meth);
-          // resp[ "methods" ].push_back( { propertyName, qPrintable(val.toString()), "dynamic" } );
         }
         resp["widgets"].push_back(
             {
