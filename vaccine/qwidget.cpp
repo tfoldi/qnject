@@ -105,6 +105,7 @@ namespace {
       nlohmann::json local;
       local["name"] = meth.name;
       local["type"] = meth.type;
+      local["access"] = meth.accessKind;
       local["signature"] = meth.signature;
       resp["methods"].push_back(local);
   }
