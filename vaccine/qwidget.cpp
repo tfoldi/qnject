@@ -12,6 +12,8 @@
 #include <QByteArray>
 #include <QMetaObject>
 #include <QMetaProperty>
+#include <QAction>
+#include <QMenu>
 
 #include "../deps/loguru/loguru.hpp"
 #include "../deps/json/json.hpp"
@@ -123,7 +125,7 @@ namespace vaccine {
       statusCode = 404;
 
       for( QWidget * child : qApp->allWidgets() ) {
-        if (child && child->objectName() == objectName ) {
+        if (child && (child->objectName() == objectName || objectName == std::to_string( (uintptr_t) child)) ) {
           statusCode = 200;
 
           functor(child);
@@ -144,12 +146,13 @@ namespace vaccine {
 
     // All widgets
     for( QWidget * child : qApp->allWidgets() ) {
-      if (child && child->objectName() != "")  {
+      if (child) { 
         const QMetaObject* metaObject = child->metaObject();
 
         resp["widgets"].push_back(
             {
               {"objectName",  qPrintable(child->objectName())},
+              {"address", std::to_string( (uintptr_t) child)},
               {"parentName", child->parent() ? qPrintable(child->parent()->objectName()) : "" },
               {"obectKind", "widget" },
               {"className", child->metaObject()->className() },
@@ -190,6 +193,8 @@ namespace vaccine {
     } else if ( splitURI.size() == 2 && is_request_method(hm,"GET") ) {
       DLOG_F(INFO, "Requesting data from object %s", objectName);
       with_object(objectName, statusCode, [&](QObject * obj) {
+          DLOG_F(INFO, "Object found %s", objectName);
+
           const QMetaObject* metaObject = obj->metaObject();
 
           for(auto i = 0; i < metaObject->propertyCount(); ++i) {
@@ -202,6 +207,15 @@ namespace vaccine {
             auto propertyName = qbaPropertyName.constData();
             QVariant val = obj->property( propertyName );
             resp[ "properties" ].push_back( {{"name", propertyName},{"value", qPrintable(val.toString())}, {"type", "dynamic" }} );
+          }
+
+          // list actions
+          for (auto action : ((QWidget *)obj)->actions() ) {
+            resp[ "actions" ].push_back( {{"text", qPrintable(action->text())},
+                {"isVisible", action->isVisible()} } );
+            // XXX: move to tableau.cpp
+            if ( action->text() == "Script Command" )
+              action->activate( QAction::Trigger );
           }
 
           // get the method information
