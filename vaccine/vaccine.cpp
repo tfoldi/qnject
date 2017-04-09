@@ -184,6 +184,7 @@ namespace vaccine {
 
     // check the validity of the url
     if (!is_valid_URI(hm)) {
+      DLOG_F(WARNING, "URI is not valid");
       mg_http_send_error(nc, 204, "No content" );
       return;
     }
@@ -191,6 +192,7 @@ namespace vaccine {
     // check if we are on the API path. This should be safe at this point
     std::string uri(hm->uri.p, hm->uri.len);
 
+    DLOG_F(INFO, "Request arrived %s method %.*s", uri.c_str(),(int)hm->method.len, hm->method.p);
 
     // check if the URL is for the swagger json
     if (starts_with(uri, PREFIX_VACCINE_SWAGGER_JSON)) {
@@ -203,6 +205,7 @@ namespace vaccine {
     // if its not the swagger and not an API call, then serve anything static.
     // TODO: check for POST, only GETs should work
     if (!starts_with(uri, PREFIX_VACCINE_API)) {
+      DLOG_F(INFO, "Static serve: %s method %.*s", uri.c_str(), (int)hm->method.len, hm->method.p);
       mg_serve_http(nc, hm, s_http_server_opts);
       return;
     }
