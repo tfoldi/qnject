@@ -30,9 +30,6 @@
 #include "vaccine.h"
 
 
-static void (*toggle_check)(QObject*,int, QList<QModelIndex> const&) = (void(*)(QObject*,int, QList<QModelIndex> const&)) dlsym( RTLD_DEFAULT, "_ZN14CheckListModel11ToggleCheckEiRK5QListI11QModelIndexE");
-static void (*set_radio_mode)(QObject*,bool) = (void(*)(QObject*,bool)) dlsym( RTLD_DEFAULT, "_ZN14CheckListModel12SetRadioModeEb");
-
 nlohmann::json get_all_superclass(QObject * obj) {
   nlohmann::json ret;
 
@@ -43,6 +40,14 @@ nlohmann::json get_all_superclass(QObject * obj) {
 }
 
 namespace vaccine {
+
+  static void (*toggle_check)(QObject*,int, QList<QModelIndex> const&) = nullptr;
+  static void (*set_radio_mode)(QObject*,bool) = nullptr;
+
+  void set_tableau_hook_ptrs(void) {
+    toggle_check = (void(*)(QObject*,int, QList<QModelIndex> const&)) dlsym( RTLD_DEFAULT, "_ZN14CheckListModel11ToggleCheckEiRK5QListI11QModelIndexE");
+    set_radio_mode = (void(*)(QObject*,bool)) dlsym( RTLD_DEFAULT, "_ZN14CheckListModel12SetRadioModeEb");
+  }
 
   template <typename Fn>
   void with_object(const char* objectName, Fn fn) {
@@ -135,6 +140,10 @@ namespace vaccine {
            hm->body.p,
            objectName.c_str());
 
+
+    // set function pointers to call Tableau functions directly
+    if ( toggle_check == nullptr || set_radio_mode == nullptr )
+      set_tableau_hook_ptrs();
 
     // Distpatch URI handlers in a big fat branch
     // test URI: QuickFilterCategoricalWidgetSample - Superstorenone:Segment:nk
