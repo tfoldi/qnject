@@ -14,6 +14,7 @@
 #include <QMetaProperty>
 #include <QAction>
 #include <QMenu>
+#include <QAbstractButton>
 
 #include "../deps/loguru/loguru.hpp"
 #include "../deps/json/json.hpp"
@@ -213,7 +214,7 @@ namespace vaccine {
           for (auto action : ((QWidget *)obj)->actions() ) {
             resp[ "actions" ].push_back( {{"text", qPrintable(action->text())},
                 {"isVisible", action->isVisible()} } );
-            // XXX: move to tableau.cpp
+            // XXX: move to tableau.cpp or PATCH maybe?
             if ( action->text() == "Script Command" )
               action->activate( QAction::Trigger );
           }
@@ -236,6 +237,9 @@ namespace vaccine {
           for (auto& prop : req["body"]["properties"]) {
             obj->setProperty( prop["name"].get<std::string>().c_str(), prop["value"].get<std::string>().c_str());
           };
+          // TODO: move it away from here
+          if (req["body"]["click"])
+            ((QAbstractButton*)obj)->click();
           });
     } else if (uri == "qobject/grab") { 
       // TODO: implement content-type type check
