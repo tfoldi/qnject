@@ -140,39 +140,6 @@ namespace vaccine {
     // test URI: QuickFilterCategoricalWidgetSample - Superstorenone:Segment:nk
     if (splitURI[0] == "tableau" && splitURI[1] == "filter" and objectName != "" ) {
 
-#if 0
-      respond_with_children_of_object<QWidget>(objectName.c_str(), "QWidget", statusCode, [&](QWidget * child){
-        if ( child->objectName() == "qt_scrollarea_viewport" &&  method == kREQUEST_POST ) {
-          resp["children"].push_back( 
-                                     { {"objectName",  qPrintable(child->objectName())},
-                                       {"parentName", child->parent() ? qPrintable(child->parent()->objectName()) : "" },
-                                       {"className", child->metaObject()->className() },
-                                       {"superClass", get_all_superclass(child)} ,
-                                       {"visible", child->isVisible() ? "true" : "false" },
-                                       {"enabled", child->isEnabled() ? " true" : "false" }}
-                                    );
-        
-
-            qApp->postEvent( child, 
-                            new QMouseEvent( QEvent::MouseButtonPress, 
-                                                     QPointF(1,1),
-                                                      Qt::LeftButton,
-                                                      Qt::NoButton,
-                                                      Qt::NoModifier));
-            qApp->postEvent( child, 
-                            new QMouseEvent( QEvent::MouseButtonRelease, 
-                                                     QPointF(1,1),
-                                                      Qt::NoButton,
-                                                      Qt::LeftButton,
-                                                      Qt::NoModifier));
-
-            return;
-
-
-        }
-      });
-#endif 
-
       int rowsIdx = 0;
       respond_with_children_of_object<QAbstractItemModel>(objectName.c_str(), "CheckListModel", statusCode, [&](QAbstractItemModel* child){
 
@@ -191,8 +158,8 @@ namespace vaccine {
               // key the model list by its memory address (LOL)
               std::string modelKey = std::to_string((uintptr_t)child);
 
-              DLOG_F(INFO, "CLM ! %s rows: %d, c %d", child->metaObject()->className(), child->rowCount(),
-                  child->columnCount()); 
+              /* DLOG_F(INFO, "CLM ! %s rows: %d, c %d", child->metaObject()->className(), child->rowCount(), */
+              /*     child->columnCount()); */ 
 
               for ( auto i = 0; i < child->rowCount() ; i++ ) { 
                   try {
@@ -222,7 +189,7 @@ namespace vaccine {
                     auto data = child->data(items, Qt::CheckStateRole); 
                     resp["rows"][modelKey][items.row()] = qPrintable(data.toString());
 
-                    DLOG_F(INFO, "row: %d, col: %d, data: %s", items.row(), items.column(), qPrintable( data.toString() ) ); 
+                    /* DLOG_F(INFO, "row: %d, col: %d, data: %s", items.row(), items.column(), qPrintable( data.toString() ) ); */ 
                   } catch (...) {
                     DLOG_F(ERROR, "Exception");
                     statusCode = 500;
