@@ -147,22 +147,13 @@ namespace vaccine {
       if (child && child->objectName() != "")  {
         const QMetaObject* metaObject = child->metaObject();
 
-        // get the method information
-        const auto methodList = get_qobject_method_metadata( metaObject );
-
-        nlohmann::json methods;
-        // output the method information
-        for (const auto& meth : methodList) {
-          add_qobject_method_to_response(methods, meth);
-        }
         resp["widgets"].push_back(
             {
               {"objectName",  qPrintable(child->objectName())},
               {"parentName", child->parent() ? qPrintable(child->parent()->objectName()) : "" },
               {"obectKind", "widget" },
               {"className", child->metaObject()->className() },
-              {"superClass", child->metaObject()->superClass()->className() },
-              {"methods", methods }
+              {"superClass", child->metaObject()->superClass()->className() }
             }
             );
       }
@@ -204,13 +195,13 @@ namespace vaccine {
           for(auto i = 0; i < metaObject->propertyCount(); ++i) {
             const char * propertyName = metaObject->property(i).name();
             QVariant val = metaObject->property(i).read( obj );
-            resp[ "properties" ].push_back( { propertyName, qPrintable(val.toString()), "meta" } );
+            resp[ "properties" ].push_back( {{"name", propertyName},{"value", qPrintable(val.toString())}, {"type", "meta" }} );
           }
 
           for (auto qbaPropertyName : obj->dynamicPropertyNames() ) {
             auto propertyName = qbaPropertyName.constData();
             QVariant val = obj->property( propertyName );
-            resp[ "properties" ].push_back( { propertyName, qPrintable(val.toString()), "dynamic" } );
+            resp[ "properties" ].push_back( {{"name", propertyName},{"value", qPrintable(val.toString())}, {"type", "dynamic" }} );
           }
 
           // get the method information
@@ -219,21 +210,21 @@ namespace vaccine {
           // output the method information
           for (const auto& meth : methods) {
             add_qobject_method_to_response(resp, meth);
-            // resp[ "methods" ].push_back( { propertyName, qPrintable(val.toString()), "dynamic" } );
           }
 
           });
-    } else if (uri == "qobject/getProperty") {
+    } else if ( splitURI.size() == 2 && !is_request_method(hm,"GET") ) {
+      // set QWidget property (setPropert). Request type should be PATCH, but POST is accepted
+      //
+      // TODO: write tests
       with_object(objectName, statusCode, [&](QObject * obj) {
-          QVariant val = obj->property( req["name"].get<std::string>().c_str() );
-          resp[ "name" ] = qPrintable(val.toString()) ;
+          DLOG_F(INFO, "Setting properties for object %s", objectName);
+          for (auto& prop : req["body"]["properties"]) {
+            obj->setProperty( prop["name"].get<std::string>().c_str(), prop["value"].get<std::string>().c_str());
+          };
           });
-    } else if (uri == "qobject/setProperty") {
-      with_object(objectName, statusCode, [&](QObject * obj) {
-          obj->setProperty( req["name"].get<std::string>().c_str(), req["value"].get<std::string>().c_str());
-          });
-    } else if (uri == "qobject/grab") {
-      // check if we found our widget
+    } else if (uri == "qobject/grab") { 
+      // TODO: implement content-type type check
       with_object(objectName, statusCode, [&](QWidget * obj) {
           QByteArray bytes;
           QBuffer buffer(&bytes);
