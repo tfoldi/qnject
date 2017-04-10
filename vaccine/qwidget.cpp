@@ -25,47 +25,6 @@
 
 
 
-// REQUEST / RESPONSE ----------------------------------------------------------
-
-
-namespace {
-
-
-  struct Request {
-    struct mg_connection* connection;
-    std::string uri;
-
-    nlohmann::json req;
-  };
-
-
-  namespace request {
-
-    // Creates a new request from the given http command
-    Request fromBody(struct mg_connection* conn, struct http_message* hm) {
-      nlohmann::json req;
-      // parse the request
-      parse_request_body( hm, req );
-      return { conn, std::move(req) };
-    }
-
-
-
-    // replies to the request if it matches the predicate
-    template< typename Pred, typename Handler>
-    bool reply_with(Request& r, Handler handler) {
-      if (pred(r)) {
-        handler(r);
-        return true;
-      }
-      return false;
-    }
-
-  }
-
-}
-
-
 
 
 // Misc QT helpers ----------------- --------------------------------------------
