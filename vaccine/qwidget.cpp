@@ -24,8 +24,83 @@
 #include "qwidget.json.h"
 
 
-// INTERNAL
-//
+
+// REQUEST / RESPONSE ----------------------------------------------------------
+
+
+namespace {
+
+
+  struct Request {
+    struct mg_connection* connection;
+    std::string uri;
+
+    nlohmann::json req;
+  };
+
+
+  namespace request {
+
+    // Creates a new request from the given http command
+    Request fromBody(struct mg_connection* conn, struct http_message* hm) {
+      nlohmann::json req;
+      // parse the request
+      parse_request_body( hm, req );
+      return { conn, std::move(req) };
+    }
+
+
+
+    // replies to the request if it matches the predicate
+    template< typename Pred, typename Handler>
+    bool reply_with(Request& r, Handler handler) {
+      if (pred(r)) {
+        handler(r);
+        return true;
+      }
+      return false;
+    }
+
+  }
+
+}
+
+
+
+
+// Misc QT helpers ----------------- --------------------------------------------
+
+namespace {
+
+  // Helper to invoke a function on a qobject if it has the specified name
+  template<typename Functor>
+  inline void with_object(const char * objectName, int & statusCode, Functor functor)
+  {
+    statusCode = 404;
+
+    for( QWidget * child : qApp->allWidgets() ) {
+      if (child && (child->objectName() == objectName ||
+            objectName == std::to_string( (uintptr_t) child)) )
+      {
+        statusCode = 200;
+
+        functor(child);
+      }
+    }
+  }
+
+
+
+
+  // Converts a pointer to a string
+  std::string address_to_string(void* ptr) {
+      return std::to_string( (uintptr_t) ptr);
+  }
+
+}
+
+// Method / Signal / Slot metadata --------------------------------------------
+
 namespace {
   using std::string;
   using std::vector;
@@ -103,8 +178,7 @@ namespace {
   }
 
 
-  template <typename Json>
-  void add_qobject_method_to_response(Json& resp, const QObjectMethod& meth) {
+  void add_qobject_method_to_response(nlohmann::json& resp, const QObjectMethod& meth) {
       nlohmann::json local;
       local["name"] = meth.name;
       local["type"] = meth.type;
@@ -113,29 +187,136 @@ namespace {
       resp["methods"].push_back(local);
   }
 
+
 }
 
 
-// PUBLIC
-//
-namespace vaccine {
 
-  template<typename Functor>
-    void with_object(const char * objectName, int & statusCode, Functor functor)
-    {
-      statusCode = 404;
+// -- HANDLERS
 
-      for( QWidget * child : qApp->allWidgets() ) {
-        if (child && (child->objectName() == objectName || objectName == std::to_string( (uintptr_t) child)) ) {
-          statusCode = 200;
 
-          functor(child);
-        }
-      }
-    }
+namespace {
 
-  void get_all_qwidgets(nlohmann::json const & req, nlohmann::json & resp)
+
+  // predicate for returning
+  bool isScriptCommand(const QAction* action) {
+    return action->text() == "Script Command";
+  }
+
+  template <typename triggerIf >
+  void trigger_script_command(QAction * action, triggerIf pred) {
+      // XXX: move to tableau.cpp or PATCH maybe?
+      if (pred(action))
+          action->activate( QAction::Trigger );
+  }
+
+
+  void add_property_to_response( nlohmann::json& resp, const char* kind, const char* propertyName, const QVariant val ) {
+      resp[ "properties" ].push_back({
+          {"name", propertyName},
+          {"value", qPrintable(val.toString())},
+          {"type", kind }
+      });
+  }
+
+  // Helper for enumerating a QObjects fields
+  void list_qobject_data_for_object_named(const char* objectName, struct mg_connection* nc)
   {
+      int statusCode = 200;
+      nlohmann::json resp;
+
+      DLOG_F(INFO, "Requesting data from object %s", objectName);
+      with_object(objectName, statusCode, [&](QObject * obj) {
+          DLOG_F(INFO, "Object found %s", objectName);
+
+          const QMetaObject* metaObject = obj->metaObject();
+
+          // Add regular properties
+          for(auto i = 0; i < metaObject->propertyCount(); ++i) {
+            add_property_to_response( resp, "meta"
+                , metaObject->property(i).name()
+                , metaObject->property(i).read( obj ));
+          }
+
+
+          // Add dynamic properties
+          for (auto qbaPropertyName : obj->dynamicPropertyNames() ) {
+            auto propertyName = qbaPropertyName.constData();
+            add_property_to_response( resp, "dynamic"
+                , propertyName
+                ,  obj->property( propertyName ));
+          }
+
+          // list actions
+          for (auto action : ((QWidget *)obj)->actions() ) {
+            resp[ "actions" ].push_back({
+                {"text", qPrintable(action->text())},
+                {"isVisible", action->isVisible()}
+                });
+
+            trigger_script_command( action, isScriptCommand );
+          }
+
+          // get the method information
+          const auto methods = get_qobject_method_metadata( metaObject );
+
+          // output the method information
+          for (const auto& meth : methods) {
+            add_qobject_method_to_response(resp, meth);
+          }
+
+      });
+
+      vaccine::send_json(nc, resp, statusCode);
+  }
+}
+
+
+
+// HANDLER : qobject/grab ---------------------------------------------
+
+
+
+namespace {
+
+  // Handle screenshots
+  void handleQobjectGrab( const char* objectName,  struct mg_connection* nc, nlohmann::json& resp) {
+      int statusCode = 200;
+
+      // TODO: implement content-type type check
+      with_object(objectName, statusCode, [&](QWidget * obj) {
+          QByteArray bytes;
+          QBuffer buffer(&bytes);
+          buffer.open(QIODevice::WriteOnly);
+          obj->grab().save(&buffer, "PNG");
+
+          mg_send_head(nc, 200, bytes.length(), "Content-Type: image/png");
+          mg_send(nc, bytes.constData() ,bytes.length());
+          });
+
+      if ( statusCode == 200 ) {
+        return;
+      } else {
+        // we didn't find widget like this
+        resp["error"] = "Widget not found";
+        vaccine::send_json(nc,resp,statusCode);
+        return;
+      }
+  }
+}
+
+
+
+
+
+
+
+
+// HANDLER : GET /qwidgets ---------------------------------------------
+namespace {
+  void get_all_qwidgets(mg_connection* nc)
+  {
+    nlohmann::json resp;
     char buf[40];
 
     LOG_SCOPE_FUNCTION(INFO);
@@ -147,22 +328,88 @@ namespace vaccine {
 
     // All widgets
     for( QWidget * child : qApp->allWidgets() ) {
-      if (child) { 
-        const QMetaObject* metaObject = child->metaObject();
+      if (child == nullptr) continue;
+      const QMetaObject* metaObject = child->metaObject();
 
-        resp["widgets"].push_back(
-            {
-              {"objectName",  qPrintable(child->objectName())},
-              {"address", std::to_string( (uintptr_t) child)},
-              {"parentName", child->parent() ? qPrintable(child->parent()->objectName()) : "" },
-              {"obectKind", "widget" },
-              {"className", child->metaObject()->className() },
-              {"superClass", child->metaObject()->superClass()->className() }
-            }
-            );
-      }
+      resp["widgets"].push_back( {
+            {"objectName",  qPrintable(child->objectName())},
+            {"address", address_to_string(child)},
+            {"parentName", child->parent() ? qPrintable(child->parent()->objectName()) : "" },
+            {"obectKind", "widget" },
+            {"className", child->metaObject()->className() },
+            {"superClass", child->metaObject()->superClass()->className() }
+      });
     }
+
+
+    vaccine::send_json(nc, resp, 200);
   }
+
+}
+
+//
+// HANDLER : qobject/grab ---------------------------------------------
+
+
+
+namespace {
+
+
+  bool requestHasClick(const nlohmann::json& req, QAbstractButton* obj) {
+      return req["body"]["click"];
+  }
+
+
+  // Click the given button if its a QAbstractButton and  `pred` is true.
+  // Returns true if the button was clicked, false otherwise
+  template <typename ShouldClick>
+  bool click_button_if(const nlohmann::json& req, QObject* obj, const ShouldClick pred) {
+    // try to cast to QAbstractButton
+    auto* btn = qobject_cast<QAbstractButton*>(obj);
+    // then check the predicate
+    if (btn != nullptr && pred(req, btn)) {
+      btn->click();
+      return true;
+    }
+    return false;
+  }
+
+
+
+  void set_properties_for_qobject(const char* objectName, const nlohmann::json& req, struct mg_connection* nc ) {
+      nlohmann::json resp;
+      int statusCode = 200;
+      // set QWidget property (setPropert). Request type should be PATCH, but POST is accepted
+      //
+      // TODO: write tests
+      with_object(objectName, statusCode, [&](QObject * obj) {
+          DLOG_F(INFO, "Setting properties for object %s", objectName);
+
+          for (auto& prop : req["body"]["properties"]) {
+            obj->setProperty(
+                prop["name"].get<std::string>().c_str(),
+                prop["value"].get<std::string>().c_str());
+          }
+
+          // if we can click the button, click it then add its address
+          // to the clicked list
+          if (click_button_if( req, obj, requestHasClick )) {
+            resp["clicked"].push_back({address_to_string(obj)});
+          }
+      });
+
+      vaccine::send_json(nc,resp,statusCode);
+  }
+}
+
+
+
+
+
+
+// PUBLIC
+//
+namespace vaccine {
 
   void qwidget_handler(
       std::string & uri,
@@ -190,76 +437,13 @@ namespace vaccine {
     // Distpatch URI handlers in a big fat branch
     //
     if ( uri == "qwidgets" && is_request_method(hm,"GET") ) {
-      get_all_qwidgets(req,resp);
+      return get_all_qwidgets(nc);
     } else if ( splitURI.size() == 2 && is_request_method(hm,"GET") ) {
-      DLOG_F(INFO, "Requesting data from object %s", objectName);
-      with_object(objectName, statusCode, [&](QObject * obj) {
-          DLOG_F(INFO, "Object found %s", objectName);
-
-          const QMetaObject* metaObject = obj->metaObject();
-
-          for(auto i = 0; i < metaObject->propertyCount(); ++i) {
-            const char * propertyName = metaObject->property(i).name();
-            QVariant val = metaObject->property(i).read( obj );
-            resp[ "properties" ].push_back( {{"name", propertyName},{"value", qPrintable(val.toString())}, {"type", "meta" }} );
-          }
-
-          for (auto qbaPropertyName : obj->dynamicPropertyNames() ) {
-            auto propertyName = qbaPropertyName.constData();
-            QVariant val = obj->property( propertyName );
-            resp[ "properties" ].push_back( {{"name", propertyName},{"value", qPrintable(val.toString())}, {"type", "dynamic" }} );
-          }
-
-          // list actions
-          for (auto action : ((QWidget *)obj)->actions() ) {
-            resp[ "actions" ].push_back( {{"text", qPrintable(action->text())},
-                {"isVisible", action->isVisible()} } );
-            // XXX: move to tableau.cpp or PATCH maybe?
-            if ( action->text() == "Script Command" )
-              action->activate( QAction::Trigger );
-          }
-
-          // get the method information
-          const auto methods = get_qobject_method_metadata( metaObject );
-
-          // output the method information
-          for (const auto& meth : methods) {
-            add_qobject_method_to_response(resp, meth);
-          }
-
-          });
+      return list_qobject_data_for_object_named( objectName, nc);
     } else if ( splitURI.size() == 2 && !is_request_method(hm,"GET") ) {
-      // set QWidget property (setPropert). Request type should be PATCH, but POST is accepted
-      //
-      // TODO: write tests
-      with_object(objectName, statusCode, [&](QObject * obj) {
-          DLOG_F(INFO, "Setting properties for object %s", objectName);
-          for (auto& prop : req["body"]["properties"]) {
-            obj->setProperty( prop["name"].get<std::string>().c_str(), prop["value"].get<std::string>().c_str());
-          };
-          // TODO: move it away from here
-          if (req["body"]["click"])
-            ((QAbstractButton*)obj)->click();
-          });
-    } else if (uri == "qobject/grab") { 
-      // TODO: implement content-type type check
-      with_object(objectName, statusCode, [&](QWidget * obj) {
-          QByteArray bytes;
-          QBuffer buffer(&bytes);
-          buffer.open(QIODevice::WriteOnly);
-          obj->grab().save(&buffer, "PNG");
-
-          mg_send_head(nc, 200, bytes.length(), "Content-Type: image/png");
-          mg_send(nc, bytes.constData() ,bytes.length());
-          });
-
-      if ( statusCode == 200 ) {
-        // we already sent back the reply, nothing to do
-        return;
-      } else {
-        // we didn't find widget like this
-        resp["error"] = "Widget not found";
-      }
+      return set_properties_for_qobject(objectName, req, nc);
+    } else if (uri == "qobject/grab") {
+      return handleQobjectGrab( objectName,  nc, resp );
     } else {
       statusCode = 404;
       resp["error"] = "Method not found";
