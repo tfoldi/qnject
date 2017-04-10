@@ -30,38 +30,71 @@
 
 namespace {
 
+    enum Method { GET, POST };
 
-  struct Request {
-    struct mg_connection* connection;
-    std::string uri;
+    struct Request {
+        struct mg_connection* connection;
 
-    nlohmann::json req;
-  };
+        nlohmann::json req;
+
+        std::string uri;
+        Method method;
+    };
 
 
-  namespace request {
 
-    // Creates a new request from the given http command
-    Request fromBody(struct mg_connection* conn, struct http_message* hm) {
-      nlohmann::json req;
-      // parse the request
-      parse_request_body( hm, req );
-      return { conn, std::move(req) };
+
+
+    namespace request {
+
+        using namespace vaccine;
+
+        bool isGet(const Request& r) {
+            return r.method == GET;
+        }
+
+        bool isPost(const Request& r) {
+            return r.method == POST;
+        }
+
+
+        template <typename Pred>
+        bool uri_matches(const Request& r, Pred pred) {
+            return pred(r.uri);
+        }
+
+        bool uri_is(const Request& r, const std::string& uri) {
+            return r.uri == uri;
+        }
+
+
+        // Creates a new request from the given http command
+        Request fromBody(struct mg_connection* conn, struct http_message* hm) {
+            nlohmann::json req;
+            // parse the request
+            vaccine::parse_request_body( hm, req );
+
+            Method method = GET;
+
+            if (vaccine::is_request_method(hm, "POST")) { method = POST; }
+
+
+            return { conn, std::move(req), req["uri"], method };
+        }
+
+
+
+        // replies to the request if it matches the predicate
+        template< typename Pred, typename Handler>
+        bool reply_with(Request& r, Pred pred, Handler handler) {
+            if (pred(r)) {
+                handler(r);
+                return true;
+            }
+            return false;
+        }
+
     }
-
-
-
-    // replies to the request if it matches the predicate
-    template< typename Pred, typename Handler>
-    bool reply_with(Request& r, Handler handler) {
-      if (pred(r)) {
-        handler(r);
-        return true;
-      }
-      return false;
-    }
-
-  }
 
 }
 
@@ -427,12 +460,28 @@ namespace vaccine {
     if (splitURI.size() > 1)
       objectName = splitURI[1].c_str();
 
+
+//      auto has_object_name = [](const Request& r){
+//          r.uri
+//      };
+
     DLOG_F(INFO, "Serving URI: \"%s %s\" with post data >>>%.*s<<<",
         req["method"].get<std::string>().c_str(),
         uri.c_str(),
         (int)hm->body.len,
         hm->body.p);
 
+
+      Request r = request::fromBody(nc, hm);
+
+      if (request::isGet(r)) {
+          if (request::uri_is(r, "qwidgets")) {
+          }
+
+      } else if (request::isPost(r)) {
+          if (request::uri_is(r, "qwidgets")) {
+          }
+      }
 
     // Distpatch URI handlers in a big fat branch
     //
