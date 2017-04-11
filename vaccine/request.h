@@ -37,79 +37,9 @@ namespace brilliant {
         }
 
 
-
-        // replies to the request if it matches the predicate
-        template< typename Pred, typename Handler>
-        bool reply_with(Request& r, Pred pred, Handler handler) {
-            if (pred(r)) {
-                handler(r);
-                return true;
-            }
-            return false;
-        }
-
     }
 
 
-    // PREDICATES -----------------------------------
-
-
-    namespace request {
-
-
-        bool isGet(const Request& r) {
-            return r.method == GET;
-        }
-
-        bool isPost(const Request& r) {
-            return r.method == POST;
-        }
-
-
-        template <typename Pred>
-        bool uri_matches(const Request& r, Pred pred) {
-            return pred(r.uri);
-        }
-
-        bool nth_uri_is(const Request& r, const size_t i, const std::string& uri) {
-            return r.uri[i] == uri;
-        }
-
-        // Checks if an incoming URL is actually valid
-        bool is_valid_URI(struct http_message* hm) {
-          return (hm->uri.p != nullptr) && (hm->uri.len > 0);
-        }
-
-    }
-
-
-    // ---------------
-    //
-
-
-//     // a handler that can call a function with separated url bits
-//     template <typename Fn>
-//     void dispatch_mg_request()(
-//             struct mg_connection *nc,
-//             int ev,
-//             void *ev_data
-//         ) {
-//           // if not HTTP request, dont care about it for now
-//           if (ev != MG_EV_HTTP_REQUEST) { return; }
-
-//           struct http_message *hm = (struct http_message *) ev_data;
-
-//           // check the validity of the url
-//           if (!request::is_valid_URI(hm)) {
-//             DLOG_F(WARNING, "URI is not valid");
-//             mg_http_send_error(nc, 204, "No content" );
-//             return;
-//           }
-
-//           // check if we are on the API path. This should be safe at this point
-//           std::string uri(hm->uri.p, hm->uri.len);
-//         }
-//     }
 
 
 
