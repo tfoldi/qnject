@@ -25,16 +25,60 @@
 #include "qwidget.json.h"
 
 #include "request.h"
+#include "http-handlers/base.h"
 
 // REQUEST / RESPONSE ----------------------------------------------------------
 
+using brilliant::Request;
+using qnject::address_to_string;
+#if 0
 using namespace brilliant;
 
+
+// move to : vaccine/utils/address.h
+namespace {
+    std::string address_to_string( void* ptr )
+    {
+      std::stringstream stream;
+      stream << std::hex << ptr << std::dec;
+      return stream.str();
+    }
+
+}
+//
+// move to : vaccine/request/response.h
+namespace {
+    // Abstract response:
+    // a response is any type that can write itselt into an mg_connection
+
+
+    struct response_prototype_t {
+      // the only requirement for a response object is to have an
+      // operator()() method taking the connection and writes it to
+      // the response
+      bool operator()( mg_connection* conn );
+    };
+
+
+    struct json_response_t {
+      int statusCode;
+      nlohmann::json value;
+
+      bool operator()( mg_connection* conn ) {
+        vaccine::send_json( conn, value, statusCode );
+
+        // anything is ok between 200 and 300
+        return (statusCode >= 200 && statusCode <= 299);
+      }
+    };
+
+}
 
 
 
 // Misc QT helpers ----------------- --------------------------------------------
 
+// move to : vaccine/utils/qobject-finders.h
 namespace {
 
     // Helper to invoke a function on a qobject if it has the specified name
@@ -52,13 +96,29 @@ namespace {
     }
 
 
-    // Converts a pointer to a string
-    std::string address_to_string(void* ptr) {
-        return std::to_string((uintptr_t) ptr);
+
+    // Helper to invoke a function on a qobject if it has the specified name
+    template<typename Functor>
+    inline json_response_t with_object_at_address(const std::string& addrStr, Functor fn) {
+
+        for (QWidget* child : qApp->allWidgets()) {
+
+            auto thisAddr = address_to_string(child);
+
+
+            DLOG_F(WARNING, "checking QOBJET @ %s against %s", thisAddr.c_str(), addrStr.c_str() );
+
+            // TODO: do proper uintptr_t to uintptr_t comparison here
+            if (child && (addrStr == address_to_string(child))) {
+                return { 200, fn(child) };
+            }
+        }
+
+        return { 404, std::string("Cannot find object @ ") + addrStr };
     }
 
 }
-
+#endif
 // Method / Signal / Slot metadata --------------------------------------------
 
 namespace {
@@ -241,12 +301,12 @@ namespace {
             LOG_SCOPE_FUNCTION(INFO);
 
             nlohmann::json resp;
-            char buf[40];
+            // char buf[40];
 
 
-            sprintf(buf, "%p", qApp);
+            // sprintf(buf, "%p", qApp);
 
-            resp["qApp"] = buf;
+            resp["qApp"] = address_to_string(qApp);
             resp["appName"] = qPrintable(QApplication::applicationName());
 
             // All widgets
@@ -258,7 +318,7 @@ namespace {
                                            {"address",    address_to_string(child)},
                                            {"parentName", child->parent() ? qPrintable(
                                                    child->parent()->objectName()) : ""},
-                                           {"obectKind",  "widget"},
+                                           {"objectKind",  "widget"},
                                            {"className",  child->metaObject()->className()},
                                            {"superClass", child->metaObject()->superClass()->className()}
                                           });
@@ -271,13 +331,13 @@ namespace {
 
         // GRAB IMAGE ------------------------------------------
 
-        bool grab_qwidget_image(const Request& r, std::string object_name) {
+        bool grab_qwidget_image(const Request& r, std::string object_address) {
             LOG_SCOPE_FUNCTION(INFO);
 
             int statusCode = 200;
 
             // // TODO: implement content-type type check
-            with_object(object_name.c_str(), statusCode, [&](QWidget* obj) {
+            qnject::with_object(object_name.c_str(), statusCode, [&](QWidget* obj) {
                 QByteArray bytes;
                 QBuffer buffer(&bytes);
                 buffer.open(QIODevice::WriteOnly);
@@ -338,119 +398,43 @@ namespace {
             return false;
         }
 
-
-        using namespace route;
-
-        // GENERIC JSON HANDLER --------------------------
-        //
-
-        template<typename Handler>
-        struct json_handler_t {
-            Handler fn;
-
-            template<typename ...Args>
-            bool operator()(const Request& r, Args ...args) const {
-                // lvalue is needed here
-                nlohmann::json ret = fn(r, args...);
-                vaccine::send_json(r.connection, ret, 200);
-                return true;
-            }
-        };
-
-        template<typename Handler>
-        json_handler_t<Handler> wrap_json(Handler h) {
-            return {h};
-        }
-
-
-        // GENERIC QOBJECT HANDLER --------------------------
-        //
-        // Maps a single URL parameter to a list of QObjects with the name,
-        // maps Handler on them and returns the concatenated response as JSON.
-
-
-        // Wraps a QObject -> Json request
-        template<typename Handler>
-        struct qobject_handler_t {
-            Handler fn;
-
-            bool operator()(const Request& r, std::string object_name) const {
-                // take a single URL parameter
-                int statusCode = 200;
-                nlohmann::json resp;
-
-                DLOG_F(INFO, "Requesting data : name ='%s'", object_name.c_str());
-                with_object(object_name.c_str(), statusCode, [&](QObject* obj) {
-                    auto addr = address_to_string(obj);
-                    DLOG_F(INFO, "Object found @ %s : name ='%s'", addr.c_str(), object_name.c_str());
-                    resp.push_back({addr, fn(r, obj)});
-                });
-
-                // if error
-                if (statusCode < 299) {
-                    vaccine::send_json(r.connection, resp, statusCode);
-                    return true;
-                }
-
-                // we didn't find widget like this
-                nlohmann::json err = {{"error", "Widget not found"}};
-//                resp["error"] = ;
-                vaccine::send_json(r.connection, err, statusCode);
-                return false;
-            }
-        };
-
-
-        // Wraps a handler
-        template<typename Fn>
-        decltype(auto) qobject_handler(Fn fn) {
-            return handler("object-name", qobject_handler_t<Fn>{fn});
-        };
-
-
-
-        // API -----------------------------------------------------
-        //
-        bool method_not_found(const Request& r) {
-            std::string uri = r.req["uri"];
-            DLOG_F(WARNING, "Unhandled request: %s", uri.c_str());
-
-            nlohmann::json resp;
-            resp["error"] = "Method not found";
-            vaccine::send_json(r.connection, resp, 404);
-            return true;
-        }
-
+        using namespace brilliant::route;
+        using namespace qnject::api;
 
         const auto qWidgetPath =
-                prefix("api",
-                       prefix("qwidgets", any_of(
+          prefix("api",
+              prefix("qwidgets", any_of(
 
-                               // leaf() only triggers if its the last entry in a path
+                  // leaf() only triggers if its the last entry in a path
 
-                               // GET /api/qwidgets
-                               leaf(get(handler(wrap_json(list_qwidgets)))),
-
-
-                               // GET /api/qwidgets/grab/<OBJECT-NAME>
-                               prefix("grab", handler("object-name", grab_qwidget_image)),
-
-                               // GET /api/qwidgets/click/<OBJECT-NAME>
-                               prefix("click", qobject_handler(click_qwidget)),
+                  // GET /api/qwidgets
+                  leaf(get(handler(wrap_json(list_qwidgets)))),
 
 
-                               //
-                               // routes are evaluated depth-first, so put more generic to the end
-                               //
+                  // GET /api/qwidgets/grab/<OBJECT-NAME>
+                  prefix("grab", handler("object-name", grab_qwidget_image)),
 
-                               // GET /api/qwidgets/<OBJECT-NAME>
-                               get(qobject_handler(show_qwidget)),
 
-                               // POST /api/qwidgets/<OBJECT-NAME>
-                               post(qobject_handler(set_qwidget)),
+                  // use the same handlers as qobject_handler, but on a single, per-object
+                  // base.
+                  prefix("by-address", any_of(
+                      prefix("click", qobject_at_address_handler(click_qwidget)),
+                      prefix("grab", handler("object-address", grab_qwidget_image)),
 
-                               handler(method_not_found)
-                       )));
+                      get(qobject_at_address_handler(show_qwidget)),
+                      post(qobject_at_address_handler(set_qwidget)),
+                      handler(method_not_found)
+                      )),
+
+                  prefix("by-name", any_of(
+                        get(qobject_at_address_handler(show_qwidget)),
+                        post(qobject_at_address_handler(set_qwidget)),
+                        handler(method_not_found)
+                        )),
+
+
+                  handler(method_not_found)
+                    )));
     }
 }
 
@@ -467,7 +451,9 @@ namespace vaccine {
             void* ev_data,
             struct http_message* hm) {
 
-        Request r = request::fromBody(nc, hm);
+        using namespace brilliant::route;
+
+        Request r = brilliant::request::fromBody(nc, hm);
 
         DLOG_F(INFO, "Serving URI: \"%s %s\" with post data >>>%.*s<<<",
                r.req["method"].get<std::string>().c_str(),
@@ -476,7 +462,7 @@ namespace vaccine {
                hm->body.p);
 
 
-        auto handled = api::qWidgetPath(route::make(r));
+        auto handled = api::qWidgetPath(make(r));
 
         // if we get here then we arent in the qwidget path.
         if (!handled) {
