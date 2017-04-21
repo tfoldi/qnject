@@ -231,7 +231,7 @@ namespace {
                                            {"address",    address_to_string(child)},
                                            {"parentName", child->parent() ? qPrintable(
                                                    child->parent()->objectName()) : ""},
-                                           {"objectKind",  "widget"},
+                                           {"objectKind", "widget"},
                                            {"className",  child->metaObject()->className()},
                                            {"superClass", child->metaObject()->superClass()->className()}
                                           });
@@ -240,34 +240,33 @@ namespace {
             return resp;
         }
 
-
+        using qnject::api::with_object_at_address;
+        using brilliant::response::data_response_t;
+        using qnject::json_response;
+        using brilliant::response::error;
+        using brilliant::response::fromContainer;
+        using namespace brilliant;
 
         // GRAB IMAGE ------------------------------------------
 
-        bool grab_qwidget_image(const Request& r, std::string object_address) {
+        data_response_t grab_qwidget_image(const Request& r,
+                                           QObject* obj) {
+
             LOG_SCOPE_FUNCTION(INFO);
 
-            int statusCode = 200;
 
-            // // TODO: implement content-type type check
-            qnject::with_object(object_name.c_str(), statusCode, [&](QWidget* obj) {
-                QByteArray bytes;
-                QBuffer buffer(&bytes);
-                buffer.open(QIODevice::WriteOnly);
-                obj->grab().save(&buffer, "PNG");
+            // TODO: implement content-type type check
 
-                mg_send_head(r.connection, 200, bytes.length(), "Content-Type: image/png");
-                mg_send(r.connection, bytes.constData(), bytes.length());
-            });
+            auto widget = qobject_cast<QWidget*>(obj);
+            if (widget == nullptr)
+                return error(404, "Object is not a QWidget");
+            QByteArray bytes;
+            QBuffer buffer(&bytes);
+            buffer.open(QIODevice::WriteOnly);
+            widget->grab().save(&buffer, "PNG");
 
-            if (statusCode == 200) {
-                return true;
-            }
-            // we didn't find widget like this
-            nlohmann::json resp;
-            resp["error"] = "Widget not found";
-            vaccine::send_json(r.connection, resp, statusCode);
-            return false;
+            return response::fromData(200, "image/png", bytes.constBegin(), bytes.constEnd());
+
         }
 
 
@@ -275,7 +274,7 @@ namespace {
 
         // SET PROPERTIES ------------------------------------------
 
-        bool set_qwidget(const Request& r, QObject* obj) {
+        data_response_t set_qwidget(const Request& r, QObject* obj) {
             LOG_SCOPE_FUNCTION(INFO);
 
             auto addr = address_to_string(obj);
@@ -291,7 +290,7 @@ namespace {
                         prop["value"].get<std::string>().c_str());
             }
 
-            return true;
+            return json_response(200, std::string("ok"));
         }
 
 
@@ -299,55 +298,67 @@ namespace {
 
         // CLICK ------------------------------------------
 
-        bool click_qwidget(const Request& r, QObject* obj) {
+        data_response_t click_qwidget(const Request& r, QObject* obj) {
             LOG_SCOPE_FUNCTION(INFO);
 
-            auto* btn = qobject_cast<QAbstractButton*>(obj);
+            auto btn = qobject_cast<QAbstractButton*>(obj);
             if (btn != nullptr) {
                 btn->click();
-                return true;
+                return json_response(200, std::string("clicked"));
             }
 
-            return false;
+            return error(404, "Not a button");
         }
 
         using namespace brilliant::route;
         using namespace qnject::api;
 
-        const auto qWidgetPath =
-          prefix("api",
-              prefix("qwidgets", any_of(
-
-                  // leaf() only triggers if its the last entry in a path
-
-                  // GET /api/qwidgets
-                  leaf(get(handler(wrap_json(list_qwidgets)))),
+        const auto byAddress =
+                // use the same handlers as qobject_handler, but on a single, per-object
+                // base.
+                prefix("by-address", any_of(
+                        prefix("click", qobject_at_address_handler(click_qwidget)),
+                        prefix("grab", qobject_at_address_handler(grab_qwidget_image)),
 
 
-                  // GET /api/qwidgets/grab/<OBJECT-NAME>
-                  prefix("grab", handler("object-name", grab_qwidget_image)),
-
-
-                  // use the same handlers as qobject_handler, but on a single, per-object
-                  // base.
-                  prefix("by-address", any_of(
-                      prefix("click", qobject_at_address_handler(click_qwidget)),
-                      prefix("grab", handler("object-address", grab_qwidget_image)),
-
-                      get(qobject_at_address_handler(show_qwidget)),
-                      post(qobject_at_address_handler(set_qwidget)),
-                      handler(method_not_found)
-                      )),
-
-                  prefix("by-name", any_of(
-                        get(qobject_at_address_handler(show_qwidget)),
+                        get(qobject_at_address_json_handler(show_qwidget)),
                         post(qobject_at_address_handler(set_qwidget)),
                         handler(method_not_found)
-                        )),
+                ));
+
+        const auto qWidgetPath =
+                prefix("api",
+                       prefix("qwidgets", any_of(
+                               // leaf() only triggers if its the last entry in a path
+
+                               // GET /api/qwidgets
+                               leaf(get(handler(wrap_json(list_qwidgets)))),
 
 
-                  handler(method_not_found)
-                    )));
+                               // GET /api/qwidgets/grab/<OBJECT-NAME>
+//                               prefix("grab", handler("object-name", grab_qwidget_image)),
+
+                               byAddress,
+                               // use the same handlers as qobject_handler, but on a single, per-object
+                               // base.
+//                               prefix("by-address", any_of(
+//                                       prefix("click", qobject_at_address_handler(click_qwidget)),
+//                                       prefix("grab", handler("object-address", grab_qwidget_image)),
+//
+//                                       get(qobject_at_address_json_handler(show_qwidget)),
+//                                       post(qobject_at_address_json_handler(set_qwidget)),
+//                                       handler(method_not_found)
+//                               )),
+
+                               // prefix("by-name", any_of(
+                               //       get(qobject_at_address_handler(show_qwidget)),
+                               //       post(qobject_at_address_handler(set_qwidget)),
+                               //       handler(method_not_found)
+                               //       )),
+
+
+                               handler(method_not_found)
+                       )));
     }
 }
 

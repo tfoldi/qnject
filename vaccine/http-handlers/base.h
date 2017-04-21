@@ -2,80 +2,170 @@
 
 #include <string>
 #include <sstream>
+#include "../request.h"
 
 namespace qnject {
 
-  // TODO: move these and PODs out to a separate http-handlers/types.h
-  using String = std::string;
-  using Json = nlohmann::json;
+    // TODO: move these and PODs out to a separate http-handlers/types.h
+    using String = std::string;
+    using Json = nlohmann::json;
 
-  //
-  //
-  // move to : vaccine/utils/address.h
-  String address_to_string( void* ptr )
-  {
-    std::stringstream stream;
-    stream << std::hex << ptr << std::dec;
-    return stream.str();
-  }
+    //
+    //
+    // move to : vaccine/utils/address.h
+    String address_to_string(void* ptr) {
+        std::stringstream stream;
+        stream << std::hex << ptr << std::dec;
+        return stream.str();
+    }
 
-  // Misc QT helpers ----------------- --------------------------------------------
+    // Misc QT helpers ----------------- --------------------------------------------
 
-  // move to : vaccine/utils/qobject-finders.h
-  // namespace {
+    // move to : vaccine/utils/qobject-finders.h
+    // namespace {
 
     // Helper to invoke a function on a qobject if it has the specified name
     template<typename Functor>
-      inline void with_object(const char* objectName, int& statusCode, Functor fn) {
+    inline void with_object(const char* objectName, int& statusCode, Functor fn) {
         statusCode = 404;
 
         for (QWidget* child : qApp->allWidgets()) {
-          if (child && (child->objectName() == objectName ||
-                objectName == std::to_string((uintptr_t) child))) {
-            statusCode = 200;
-            fn(child);
-          }
+            if (child && (child->objectName() == objectName ||
+                          objectName == std::to_string((uintptr_t) child))) {
+                statusCode = 200;
+                fn(child);
+            }
         }
-      }
-
+    }
 
 
 }
 
 
-
 namespace brilliant {
-  //
-  // move to : vaccine/request/response.h
-  // ------------------------------------
+    //
+    // move to : vaccine/request/response.h
+    // ------------------------------------
 
-  // Abstract response:
-  // a response is any type that can write itselt into an mg_connection
+    // Abstract response:
+    // a response is any type that can write itselt into an mg_connection
 
-  // TODO: move these and PODs out to a separate http-handlers/types.h
+    // TODO: move these and PODs out to a separate http-handlers/types.h
 
-  struct response_prototype_t {
-    // the only requirement for a response object is to have an
-    // operator()() method taking the connection and writes it to
-    // the response
-    bool operator()( mg_connection* conn );
-  };
+    struct response_prototype_t {
+        // the only requirement for a response object is to have an
+        // operator()() method taking the connection and writes it to
+        // the response
+        bool operator()(mg_connection* conn);
+    };
+
+
+    namespace response {
+
+        using String = std::string;
+
+        struct data_response_t {
+
+            const int statusCode;
+            const std::vector<char> data;
+            const std::string headers;
+
+            bool operator()(mg_connection* conn) const {
+                LOG_SCOPE_FUNCTION(INFO);
+
+                const int dataSizeAsInt = (int)data.size();
+                DLOG_F(INFO, "Sending %d bytes", dataSizeAsInt);
+
+                mg_send_head(conn, 200, dataSizeAsInt, headers.c_str());
+                mg_send(conn, data.data(), dataSizeAsInt);
+
+                // why one would send fe. an image as 404 is beyond me
+                return (statusCode >= 200 && statusCode <= 299);
+
+            }
+
+        };
+
+
+        String headersForContentType(const String& contentType) {
+            static const String headers =
+                    "Access-Control-Allow-Origin: *\r\n"
+                            "Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept\r\n"
+                            "Content-Type: ";
+            return headers + contentType;
+        }
+
+
+        template<typename InputIterator>
+        data_response_t fromData(int statusCode, String contentType, InputIterator start, InputIterator end) {
+            return {statusCode, std::vector<char>(start, end), headersForContentType(contentType)};
+        }
+
+
+        // Returns a new response from the given memory
+        data_response_t fromMemoryBlock(int statusCode, String contentType, const void* start, size_t size) {
+            const char* p = (const char*)start;
+            return {statusCode, std::vector<char>(p, p + size), headersForContentType(contentType)};
+        }
+
+        template<typename Container>
+        data_response_t fromContainer(int statusCode, String contentType, Container&& c) {
+            using std::begin;
+            using std::end;
+            return fromData(statusCode, contentType, begin(c), end(c));
+        }
+
+
+        // ---------------------------------
+
+
+        data_response_t error(int statusCode, String message) {
+            return fromContainer(statusCode, "text/plain", message);
+        }
+
+
+    }
 }
 
 namespace qnject {
 
-  struct json_response_t {
-    int statusCode;
-    qnject::Json value;
 
-    bool operator()( mg_connection* conn ) {
-      vaccine::send_json( conn, value, statusCode );
+//   // Basic Json response
+//   struct json_response_t {
+//     int statusCode;
+//     qnject::Json value;
 
-      // anything is ok between 200 and 300
-      return (statusCode >= 200 && statusCode <= 299);
+//     bool operator()( mg_connection* conn ) {
+//       static const auto headers =
+//         "Access-Control-Allow-Origin: *\r\n"
+//         "Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept\r\n"
+//         "Content-Type: application/json";
+
+//       std::string d = value.dump(2);
+
+//       mg_send_head(conn, statusCode, d.length(), headers);
+//       mg_send(conn,d.c_str(),d.length());
+
+//       // anything is ok between 200 and 300
+//       return (statusCode >= 200 && statusCode <= 299);
+//     }
+//   };
+
+
+    using brilliant::response::data_response_t;
+
+    data_response_t json_response(int statusCode, Json data) {
+        return brilliant::response::fromContainer(statusCode, "application/json", data.dump(2));
     }
-  };
 
+
+
+
+//   template <typename T>
+//   json_response_t appendJson( json_response_t&& resp, T val ) {
+//       resp.value.push_back(val);
+//       return std::move(resp);
+//   }
 
 
 
@@ -86,7 +176,7 @@ namespace qnject {
 // GENERIC HANDLERS
 //
 namespace qnject {
-  namespace api {
+    namespace api {
 
         // using namespace brilliant::route;
 
@@ -146,7 +236,6 @@ namespace qnject {
 
                 // we didn't find widget like this
                 Json err = {{"error", "Widget not found"}};
-//                resp["error"] = ;
                 vaccine::send_json(r.connection, err, statusCode);
                 return false;
             }
@@ -168,20 +257,21 @@ namespace qnject {
 
         // Helper to invoke a function on a qobject if it has the specified name
         template<typename Functor>
-          inline json_response_t with_object_at_address(const String& addrStr, Functor fn) {
+        inline data_response_t with_object_at_address(const String& addrStr, Functor fn) {
+            using namespace brilliant;
 
             for (QWidget* child : qApp->allWidgets()) {
 
-              auto thisAddr = address_to_string(child);
+                auto thisAddr = address_to_string(child);
 
-              // TODO: do proper uintptr_t to uintptr_t comparison here
-              if (child && (addrStr == address_to_string(child))) {
-                return { 200, fn(child) };
-              }
+                // TODO: do proper uintptr_t to uintptr_t comparison here
+                if (child && (addrStr == address_to_string(child))) {
+                    return fn(child);
+                }
             }
 
-            return { 404, String("Cannot find object @ ") + addrStr };
-          }
+            return response::error(404, String("Cannot find object @ ") + addrStr);
+        }
 
 
         // Wraps a QObject -> Json request
@@ -210,6 +300,28 @@ namespace qnject {
         };
 
 
+        template<typename Fn>
+        struct json_wrapped_result_t {
+            Fn fn;
+
+            template <typename... Args>
+            data_response_t operator()(Args...args) const {
+                return json_response(200, fn(args...));
+            }
+        };
+
+        // Wraps a handler
+        template<typename Fn>
+        decltype(auto) qobject_at_address_json_handler(Fn fn) {
+            return qobject_at_address_handler(json_wrapped_result_t<Fn>{fn});
+//            using namespace brilliant;
+//            auto wrapped = [&](const Request& req, QObject* obj) {
+//                return json_response(200, fn(req, obj));
+//            };
+//            return route::handler("object-address", qobject_by_address_handler_t<Fn>{wrapped});
+        };
+
+
 
 
         // NOT FOUND :) -----------------------------------------------------
@@ -225,5 +337,5 @@ namespace qnject {
         }
 
 
-  }
+    }
 }
