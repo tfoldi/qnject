@@ -129,43 +129,11 @@ namespace brilliant {
 
 namespace qnject {
 
-
-//   // Basic Json response
-//   struct json_response_t {
-//     int statusCode;
-//     qnject::Json value;
-
-//     bool operator()( mg_connection* conn ) {
-//       static const auto headers =
-//         "Access-Control-Allow-Origin: *\r\n"
-//         "Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept\r\n"
-//         "Content-Type: application/json";
-
-//       std::string d = value.dump(2);
-
-//       mg_send_head(conn, statusCode, d.length(), headers);
-//       mg_send(conn,d.c_str(),d.length());
-
-//       // anything is ok between 200 and 300
-//       return (statusCode >= 200 && statusCode <= 299);
-//     }
-//   };
-
-
     using brilliant::response::data_response_t;
 
     data_response_t json_response(int statusCode, Json data) {
         return brilliant::response::fromContainer(statusCode, "application/json", data.dump(2));
     }
-
-
-
-
-//   template <typename T>
-//   json_response_t appendJson( json_response_t&& resp, T val ) {
-//       resp.value.push_back(val);
-//       return std::move(resp);
-//   }
 
 
 
@@ -314,11 +282,6 @@ namespace qnject {
         template<typename Fn>
         decltype(auto) qobject_at_address_json_handler(Fn fn) {
             return qobject_at_address_handler(json_wrapped_result_t<Fn>{fn});
-//            using namespace brilliant;
-//            auto wrapped = [&](const Request& req, QObject* obj) {
-//                return json_response(200, fn(req, obj));
-//            };
-//            return route::handler("object-address", qobject_by_address_handler_t<Fn>{wrapped});
         };
 
 
