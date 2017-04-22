@@ -21,6 +21,7 @@
 #include <QVariant>
 #include <QDebug>
 #include <QMouseEvent>
+#include <QKeyEvent>
 
 
 #include "../deps/loguru/loguru.hpp"
@@ -146,8 +147,21 @@ namespace vaccine {
       set_tableau_hook_ptrs();
 
     // Distpatch URI handlers in a big fat branch
+    if (splitURI[0] == "tableau" && splitURI[1] == "scriptwindow" and objectName != "" ) {
+      with_object(objectName.c_str(), statusCode, [&](QObject * obj) {
+          /* QKeyEvent * eve1 = new QKeyEvent (QEvent::KeyPress,Qt::Key_D,Qt::AltModifier|Qt::ShiftModifier,"alt-shift-d"); */
+          /* QKeyEvent * eve2 = new QKeyEvent (QEvent::KeyRelease,Qt::Key_D,Qt::AltModifier|Qt::ShiftModifier,"alt-shift-d"); */
+          QKeyEvent * eve1 = new QKeyEvent (QEvent::KeyPress,Qt::Key_D,Qt::AltModifier|Qt::ShiftModifier);
+          QKeyEvent * eve2 = new QKeyEvent (QEvent::KeyRelease,Qt::Key_D,Qt::AltModifier|Qt::ShiftModifier);
+
+          /* qApp->postEvent( obj, (QEvent *)eve1); */
+          /* qApp->postEvent( obj, (QEvent *)eve2); */
+          qApp->postEvent( qApp->activeWindow(), (QEvent *)eve1);
+          qApp->postEvent( qApp->activeWindow(), (QEvent *)eve2);
+
+          });
     // test URI: QuickFilterCategoricalWidgetSample - Superstorenone:Segment:nk
-    if (splitURI[0] == "tableau" && splitURI[1] == "filter" and objectName != "" ) {
+    } else if (splitURI[0] == "tableau" && splitURI[1] == "filter" and objectName != "" ) {
 
       int rowsIdx = 0;
       respond_with_children_of_object<QAbstractItemModel>(objectName.c_str(), "CheckListModel", statusCode, [&](QAbstractItemModel* child){
