@@ -32,6 +32,19 @@ namespace qnject {
 
         namespace impl {
 
+            template <typename ChildT>
+            nlohmann::json childrenCastableTo(QObject* m) {
+                nlohmann::json j = "[]"_json;
+                // Add actions
+                for (QObject* o : m->children()) {
+                    ChildT* child = qobject_cast<ChildT*>(o);
+                    // skip non-menu children
+                    if (child == nullptr) continue;
+
+                    j.push_back(dumpMenu(o));
+                }
+                return j;
+            }
 
             // Exports QMenu data as JSON
             Json dumpMenu(QObject* o) {
@@ -40,25 +53,30 @@ namespace qnject {
 
                 // Try to cast to QMenu
                 QMenu* m = qobject_cast<QMenu*>(o);
-                if (m == nullptr) { return {{"error", "Cannot cast object to QMenu*"}}; };
+                if (m == nullptr) {
+                return {{"object", object_meta(o)},
+                        {"error", "Cannot cast object to QMenu*"}};
+                        };
 
                 // Build output data
-                Json j = {{"actions",  {}},
-                          {"children", {}},
+                Json j = {{"actions",  qnject::helpers::object_actions_meta(o)},
+                          {"children", childrenCastableTo<QMenu>(m)},
                           {"meta",     object_meta(o)}};
 
-                // Add actions
-                for (QAction* action: m->actions()) {
-                    j["actions"].push_back(qnject::helpers::action_meta(action));
-                }
+//                // Add actions
+//                for (QAction* action: m->actions()) {
+//                    j["actions"].push_back(qnject::helpers::action_meta(action));
+//                }
 
                 // Add children
-                for (QObject* o : m->children()) {
-                    j["children"].push_back(dumpMenu(o));
-                }
+//                for (QObject* o : m->children()) {
+//                    j["children"].push_back(dumpMenu(o));
+//                }
 
                 return j;
             }
+
+
 
 
         }

@@ -21,7 +21,7 @@ endif ()
 set(BRILLIANT_REQUEST request.h http-handlers/base.h )
 set(MONGOOSE ../deps/mongoose/mongoose.c ../deps/mongoose/mongoose.h)
 set(LOGURU ../deps/loguru/loguru.hpp)
-set(JSON ../deps/json/json.hpp qwidget-json-helpers.h http-handlers/menu-tree-trigger-action.h http-handlers/qwidgets-list.h)
+set(JSON ../deps/json/json.hpp qwidget-json-helpers.h http-handlers/menu-tree-trigger-action.h http-handlers/qwidgets-show.h http-handlers/qwidgets-list.h http-handlers/qwidgets-grab-image.h http-handlers/qwidgets-update.h)
 
 
 # On linux/freebsd/osx we are up for a shared library

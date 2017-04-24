@@ -2,7 +2,11 @@
 //
 // Created by Miles Gibson on 24/04/17.
 //
-#include <QObject.h>
+#include <QObject>
+#include <QWidget>
+#include <QAction>
+#include <QMetaObject>
+#include <QMetaMethod>
 #include "json.hpp"
 #include <string>
 #include <sstream>
@@ -52,11 +56,12 @@ namespace qnject {
 
         // Returns the action metadata for a QWidget
         nlohmann::json object_actions_meta(QObject* obj) {
-            auto j = "[]"_json;
+            nlohmann::json j = "[]"_json;
 
             auto o = qobject_cast<QWidget*>(obj);
             if (o == nullptr) {
-                return {{"error", "Cannot cast QObject to QAction"}};
+                return {{"object", object_meta(obj)},
+                        {"error", "Cannot cast QObject to QWidget"}};
             }
 
             for (auto action : o->actions()) {
@@ -163,7 +168,6 @@ namespace qnject {
         }
 
         nlohmann::json qwidget_details(QObject* obj) {
-//            const QMetaObject* metaObject = obj->metaObject();
 
             return {{"object",     helpers::object_meta(obj)},
                     {"properties", helpers::object_properties_meta(obj)},

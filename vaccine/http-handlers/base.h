@@ -2,7 +2,8 @@
 
 #include <string>
 #include <sstream>
-#include <Qobject.h>
+#include <QObject>
+#include <QApplication>
 #include "../request.h"
 #include "../qwidget-json-helpers.h"
 
@@ -66,9 +67,8 @@ namespace brilliant {
             const std::string headers;
 
             bool operator()(mg_connection* conn) const {
-                LOG_SCOPE_FUNCTION(INFO);
 
-                const int dataSizeAsInt = (int)data.size();
+                const int dataSizeAsInt = (int) data.size();
                 DLOG_F(INFO, "Sending %d bytes", dataSizeAsInt);
 
                 mg_send_head(conn, 200, dataSizeAsInt, headers.c_str());
@@ -99,7 +99,7 @@ namespace brilliant {
 
         // Returns a new response from the given memory
         data_response_t fromMemoryBlock(int statusCode, String contentType, const void* start, size_t size) {
-            const char* p = (const char*)start;
+            const char* p = (const char*) start;
             return {statusCode, std::vector<char>(p, p + size), headersForContentType(contentType)};
         }
 
@@ -120,11 +120,11 @@ namespace brilliant {
 
 
         // Tries to run fn(args...) and log any errors
-        template <typename Fn, typename... Args>
+        template<typename Fn, typename... Args>
         data_response_t wrapErrors(Fn fn, Args&& ...args) {
             try {
                 return fn(args...);
-            } catch (std::exception & ex ) {
+            } catch (std::exception& ex) {
                 DLOG_F(ERROR, "Exception: %s", ex.what());
                 return error(500, "Exception occured");
             }
@@ -140,7 +140,6 @@ namespace qnject {
     data_response_t json_response(int statusCode, Json data) {
         return brilliant::response::fromContainer(statusCode, "application/json", data.dump(2));
     }
-
 
 
 }
@@ -281,10 +280,10 @@ namespace qnject {
         struct json_wrapped_result_t {
             Fn fn;
 
-            template <typename... Args>
+            template<typename... Args>
             data_response_t operator()(Args...args) const {
                 using brilliant::response::wrapErrors;
-                return wrapErrors( [&]() { return json_response(200, fn(args...)); });
+                return wrapErrors([&]() { return json_response(200, fn(args...)); });
             }
         };
 
