@@ -25,7 +25,7 @@ namespace qnject {
                 using namespace brilliant;
 
                 return {{"actions",    helpers::object_actions_meta(o)},
-                        {"childMenus", helpers::collectChildrenCastableTo<QMenu>(o, dumpMenu)},
+                        {"childMenus", helpers::collectChildrenJson<QMenu>(o, dumpMenu)},
                         {"object",     helpers::object_meta(o)}};
 
             }

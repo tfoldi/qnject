@@ -34,7 +34,7 @@ set(HANDLERS
         http-handlers/qwidgets-grab-image.h
         http-handlers/menu-tree-get.h
         http-handlers/menu-tree-trigger-action.h
-        )
+        http-handlers/qwidgets-get-menubar.h)
 
 
 # On linux/freebsd/osx we are up for a shared library

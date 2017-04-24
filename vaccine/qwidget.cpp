@@ -23,6 +23,7 @@
 #include "http-handlers/qwidgets-show.h"
 #include "http-handlers/qwidgets-update.h"
 #include "http-handlers/qwidgets-grab-image.h"
+#include "http-handlers/qwidgets-get-menubar.h"
 
 // REQUEST / RESPONSE ----------------------------------------------------------
 
@@ -87,6 +88,10 @@ namespace {
                        prefix("qwidgets", any_of(
                                leaf(widgetListHandler),
                                byAddressHandlers,
+
+                               // Returns the main menu object(s) of the application
+                               prefix("main-menu", handler(wrap_json(qwidgets_get_menubar))),
+
                                handler(method_not_found)
                        )));
     }
