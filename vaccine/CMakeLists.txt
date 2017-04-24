@@ -18,10 +18,23 @@ endif ()
 
 ## DEPENDENCIES ################################################################
 
-set(BRILLIANT_REQUEST request.h http-handlers/base.h )
+set(BRILLIANT_REQUEST request.h )
 set(MONGOOSE ../deps/mongoose/mongoose.c ../deps/mongoose/mongoose.h)
 set(LOGURU ../deps/loguru/loguru.hpp)
-set(JSON ../deps/json/json.hpp qwidget-json-helpers.h http-handlers/menu-tree-trigger-action.h http-handlers/qwidgets-show.h http-handlers/qwidgets-list.h http-handlers/qwidgets-grab-image.h http-handlers/qwidgets-update.h)
+set(JSON ../deps/json/json.hpp )
+
+set(HANDLERS
+        qobject-utils.h
+        qwidget-json-helpers.h
+
+        http-handlers/base.h
+        http-handlers/qwidgets-list.h
+        http-handlers/qwidgets-show.h
+        http-handlers/qwidgets-update.h
+        http-handlers/qwidgets-grab-image.h
+        http-handlers/menu-tree-get.h
+        http-handlers/menu-tree-trigger-action.h
+        )
 
 
 # On linux/freebsd/osx we are up for a shared library
@@ -31,12 +44,14 @@ add_library(qnject SHARED
         utils.hpp
         lib_preload/dyld_insert.cpp
 
+        ${HANDLERS}
+
         ${MONGOOSE} ${LOGURU} ${JSON}
         ${BRILLIANT_REQUEST}
 
         ${VACCINE_QT_SOURCES}
         ${COMPILED_RESOURCES}
-        http-handlers/menu-tree-get.h)
+        )
 
 target_include_directories(qnject
         PUBLIC ../deps/json

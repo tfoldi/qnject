@@ -2,8 +2,8 @@
 
 
 #include "json.hpp"
-#include <QObject.h>
-#include <QMetaObject.h>
+#include <QObject>
+#include <QMetaObject>
 #include "./base.h"
 #include "../qwidget-json-helpers.h"
 

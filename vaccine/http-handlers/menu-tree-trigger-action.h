@@ -1,8 +1,8 @@
 #pragma once
 
 #include "./base.h"
-#include <QMenu.h>
-#include <QMenuBar.h>
+#include <QMenu>
+#include <QMenuBar>
 
 namespace qnject {
     namespace api {
