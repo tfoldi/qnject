@@ -21,7 +21,9 @@ find_package(Threads REQUIRED)
 # Find the Qt package
 find_package(Qt5Core)
 find_package(Qt5Widgets)
-if(Qt5Core_FOUND AND Qt5Widgets_FOUND)
+find_package(Qt5Script)
+if(Qt5Core_FOUND AND Qt5Widgets_FOUND AND Qt5Script_FOUND)
+  message("HAVE WO")
   set(WITH_QT TRUE)
 endif()
 

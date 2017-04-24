@@ -5,17 +5,21 @@
 #include <dlfcn.h>
 #include <map>
 #include <vector>
+
+
+#include <QAbstractButton>
+#include <QAction>
 #include <QApplication>
-#include <QList>
-#include <QObject>
-#include <QWidget>
 #include <QBuffer>
 #include <QByteArray>
+#include <QDebug>
+#include <QList>
+#include <QMenu>
 #include <QMetaObject>
 #include <QMetaProperty>
-#include <QAction>
-#include <QMenu>
-#include <QAbstractButton>
+#include <QObject>
+#include <QScriptEngine>
+#include <QWidget>
 
 #include "../deps/loguru/loguru.hpp"
 #include "../deps/json/json.hpp"
@@ -25,12 +29,16 @@
 #include "qwidget.json.h"
 
 #include "request.h"
+#include "qwidget-json-helpers.h"
 #include "http-handlers/base.h"
+#include "http-handlers/menu-tree-get.h"
+#include "http-handlers/menu-tree-trigger-action.h"
 
 // REQUEST / RESPONSE ----------------------------------------------------------
 
 using brilliant::Request;
 using qnject::address_to_string;
+using qnject::helpers::object_meta;
 //
 // Method / Signal / Slot metadata --------------------------------------------
 
@@ -163,20 +171,22 @@ namespace {
     }
 
 
+
     nlohmann::json show_qwidget(const Request& r, QObject* obj) {
-        nlohmann::json resp;
         const QMetaObject* metaObject = obj->metaObject();
+        auto resp = "{\"methods\":[], \"properties\":[] }"_json;
+        resp.push_back({"meta", object_meta(obj)});
 
         // Add regular properties
         for (auto i = 0; i < metaObject->propertyCount(); ++i) {
-            add_property_to_response(resp, "meta", metaObject->property(i).name(), metaObject->property(i).read(obj));
+            add_property_to_response(resp, "is-normal-property", metaObject->property(i).name(), metaObject->property(i).read(obj));
         }
 
 
         // Add dynamic properties
         for (auto qbaPropertyName : obj->dynamicPropertyNames()) {
             auto propertyName = qbaPropertyName.constData();
-            add_property_to_response(resp, "dynamic", propertyName, obj->property(propertyName));
+            add_property_to_response(resp, "is-dynamic-property", propertyName, obj->property(propertyName));
         }
 
         // list actions
@@ -185,7 +195,6 @@ namespace {
                                        {"isVisible", action->isVisible()}
                                       });
 
-            trigger_script_command(action, isScriptCommand);
         }
 
         // get the method information
@@ -213,28 +222,15 @@ namespace {
         nlohmann::json list_qwidgets(const Request& r) {
             LOG_SCOPE_FUNCTION(INFO);
 
-            nlohmann::json resp;
-            // char buf[40];
-
-
-            // sprintf(buf, "%p", qApp);
-
-            resp["qApp"] = address_to_string(qApp);
-            resp["appName"] = qPrintable(QApplication::applicationName());
+            nlohmann::json resp = {{"qApp", address_to_string(qApp)},
+                                   {"appName", qPrintable(QApplication::applicationName())},
+                                   {"widgets", {}}
+                                   };
 
             // All widgets
             for (QWidget* child : qApp->allWidgets()) {
                 if (child == nullptr) continue;
-                const QMetaObject* metaObject = child->metaObject();
-
-                resp["widgets"].push_back({{"objectName", qPrintable(child->objectName())},
-                                           {"address",    address_to_string(child)},
-                                           {"parentName", child->parent() ? qPrintable(
-                                                   child->parent()->objectName()) : ""},
-                                           {"objectKind", "widget"},
-                                           {"className",  child->metaObject()->className()},
-                                           {"superClass", child->metaObject()->superClass()->className()}
-                                          });
+                resp["widgets"].push_back(object_meta(child));
             }
 
             return resp;
@@ -319,6 +315,9 @@ namespace {
                 prefix("by-address", any_of(
                         prefix("click", qobject_at_address_handler(click_qwidget)),
                         prefix("grab", qobject_at_address_handler(grab_qwidget_image)),
+                        prefix("menu", qobject_at_address_handler(get_menu_tree)),
+                        prefix("trigger-menu-action",
+                               qobject_at_address_handler(menu_tree_trigger_action)),
 
 
                         get(qobject_at_address_json_handler(show_qwidget)),
@@ -330,32 +329,10 @@ namespace {
                 prefix("api",
                        prefix("qwidgets", any_of(
                                // leaf() only triggers if its the last entry in a path
-
-                               // GET /api/qwidgets
                                leaf(get(handler(wrap_json(list_qwidgets)))),
 
 
-                               // GET /api/qwidgets/grab/<OBJECT-NAME>
-//                               prefix("grab", handler("object-name", grab_qwidget_image)),
-
                                byAddress,
-                               // use the same handlers as qobject_handler, but on a single, per-object
-                               // base.
-//                               prefix("by-address", any_of(
-//                                       prefix("click", qobject_at_address_handler(click_qwidget)),
-//                                       prefix("grab", handler("object-address", grab_qwidget_image)),
-//
-//                                       get(qobject_at_address_json_handler(show_qwidget)),
-//                                       post(qobject_at_address_json_handler(set_qwidget)),
-//                                       handler(method_not_found)
-//                               )),
-
-                               // prefix("by-name", any_of(
-                               //       get(qobject_at_address_handler(show_qwidget)),
-                               //       post(qobject_at_address_handler(set_qwidget)),
-                               //       handler(method_not_found)
-                               //       )),
-
 
                                handler(method_not_found)
                        )));
@@ -375,6 +352,11 @@ namespace vaccine {
             void* ev_data,
             struct http_message* hm) {
 
+
+      /*
+        QScriptEngine engine;
+        qDebug() << "the magic number is:" << engine.evaluate("1 + 2").toNumber();
+        */
         using namespace brilliant::route;
 
         Request r = brilliant::request::fromBody(nc, hm);

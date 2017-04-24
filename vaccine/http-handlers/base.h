@@ -2,7 +2,9 @@
 
 #include <string>
 #include <sstream>
+#include <Qobject.h>
 #include "../request.h"
+#include "../qwidget-json-helpers.h"
 
 namespace qnject {
 
@@ -10,14 +12,7 @@ namespace qnject {
     using String = std::string;
     using Json = nlohmann::json;
 
-    //
-    //
-    // move to : vaccine/utils/address.h
-    String address_to_string(void* ptr) {
-        std::stringstream stream;
-        stream << std::hex << ptr << std::dec;
-        return stream.str();
-    }
+    using qnject::helpers::address_to_string;
 
     // Misc QT helpers ----------------- --------------------------------------------
 
