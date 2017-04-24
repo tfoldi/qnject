@@ -14,7 +14,7 @@ namespace qnject {
         nlohmann::json qwidget_list(const Request& r) {
             using qnject::helpers::object_meta;
 
-            nlohmann::json resp = {{"qApp", address_to_string(qApp)},
+            nlohmann::json resp = {{"qApp",    address_to_string(qApp)},
                                    {"appName", qPrintable(QApplication::applicationName())},
                                    {"widgets", {}}
             };

@@ -13,7 +13,7 @@ namespace qnject {
     namespace api {
 
         data_response_t qwidgets_grab_image(const Request& r,
-                                           QObject* obj) {
+                                            QObject* obj) {
             using namespace brilliant;
             LOG_SCOPE_FUNCTION(INFO);
 

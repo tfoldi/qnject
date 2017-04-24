@@ -61,7 +61,7 @@ namespace qnject {
             auto o = qobject_cast<QWidget*>(obj);
             if (o == nullptr) {
                 return {{"object", object_meta(obj)},
-                        {"error", "Cannot cast QObject to QWidget"}};
+                        {"error",  "Cannot cast QObject to QWidget"}};
             }
 
             for (auto action : o->actions()) {

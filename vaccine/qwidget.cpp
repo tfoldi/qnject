@@ -2,7 +2,6 @@
 
 #if HAVE_QT5CORE && HAVE_QT5WIDGETS
 
-#include <dlfcn.h>
 #include <map>
 #include <vector>
 
