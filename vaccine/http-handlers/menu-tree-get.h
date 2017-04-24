@@ -1,8 +1,9 @@
 #pragma once
 
-#include "./base.h"
 #include <QMenu.h>
 #include <QMenuBar.h>
+#include "./base.h"
+#include "../qwidget-json-helpers.h"
 
 namespace qnject {
     namespace api {
@@ -49,9 +50,6 @@ namespace qnject {
                 // Add actions
                 for (QAction* action: m->actions()) {
                     j["actions"].push_back(qnject::helpers::action_meta(action));
-//                    j["actions"].push_back({{"text", qPrintable(action->text())},
-//                                            {"isVisible", action->isVisible()}
-//                                           });
                 }
 
                 // Add children

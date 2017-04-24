@@ -119,6 +119,17 @@ namespace brilliant {
         }
 
 
+        // Tries to run fn(args...) and log any errors
+        template <typename Fn, typename... Args>
+        data_response_t wrapErrors(Fn fn, Args&& ...args) {
+            try {
+                return fn(args...);
+            } catch (std::exception & ex ) {
+                DLOG_F(ERROR, "Exception: %s", ex.what());
+                return error(500, "Exception occured");
+            }
+        }
+
     }
 }
 
@@ -263,13 +274,17 @@ namespace qnject {
         };
 
 
+        // Wraps a handler that returns a Json object into a handler that returns
+        // a data_response_t
+
         template<typename Fn>
         struct json_wrapped_result_t {
             Fn fn;
 
             template <typename... Args>
             data_response_t operator()(Args...args) const {
-                return json_response(200, fn(args...));
+                using brilliant::response::wrapErrors;
+                return wrapErrors( [&]() { return json_response(200, fn(args...)); });
             }
         };
 

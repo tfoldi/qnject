@@ -33,6 +33,7 @@
 #include "http-handlers/base.h"
 #include "http-handlers/menu-tree-get.h"
 #include "http-handlers/menu-tree-trigger-action.h"
+#include "http-handlers/qwidgets-list.h"
 
 // REQUEST / RESPONSE ----------------------------------------------------------
 
@@ -320,7 +321,8 @@ namespace {
                                qobject_at_address_handler(menu_tree_trigger_action)),
 
 
-                        get(qobject_at_address_json_handler(show_qwidget)),
+                        prefix("show", qobject_at_address_json_handler(qwidget_meta)),
+//                        get(qobject_at_address_json_handler(show_qwidget)),
                         post(qobject_at_address_handler(set_qwidget)),
                         handler(method_not_found)
                 ));
