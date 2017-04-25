@@ -6,6 +6,7 @@
 #include <QApplication>
 #include "../request.h"
 #include "../qwidget-json-helpers.h"
+#include "../qobject-utils.h"
 
 namespace qnject {
 
@@ -233,10 +234,32 @@ namespace qnject {
         inline data_response_t with_object_at_address(const String& addrStr, Functor fn) {
             using namespace brilliant;
 
+#ifndef SAFE_ADDRESSES_ONLY
+
+            void* addr = helpers::stringToAddress(addrStr);
+
+            if (addr == nullptr) {
+                return response::error(404, "Cannot find object at invalid address");
+            }
+
+
+            // HERE WE GO. DANGER. DANGER. DANGER.
+            QObject* obj = (QObject*)addr;
+            if (qobject_cast<QObject*>(obj) == nullptr) {
+                return response::error(404, "Cannot cast object at address to QObject");
+            }
+
+            return fn(obj);
+
+
+#else
+
+
             for (QWidget* child : qApp->allWidgets()) {
 
                 auto thisAddr = address_to_string(child);
 
+                DLOG_F(INFO, "Checking addr: %s == %s", thisAddr.c_str(), address_to_string(child).c_str());
                 // TODO: do proper uintptr_t to uintptr_t comparison here
                 if (child && (addrStr == address_to_string(child))) {
                     return fn(child);
@@ -244,6 +267,7 @@ namespace qnject {
             }
 
             return response::error(404, String("Cannot find object @ ") + addrStr);
+#endif // UNSAFE_ADDRESSES
         }
 
 

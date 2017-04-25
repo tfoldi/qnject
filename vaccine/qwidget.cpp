@@ -71,7 +71,7 @@ namespace {
 //                        prefix("click", qobject_at_address_handler(click_qwidget)),
                         prefix("grab", qobject_at_address_handler(qwidgets_grab_image)),
                         prefix("menu", qobject_at_address_handler(get_menu_tree)),
-                        prefix("trigger-menu-action",
+                        prefix("trigger",
                                qobject_at_address_handler(menu_tree_trigger_action)),
                         get(qobject_at_address_json_handler(qwidget_show)),
                         post(qobject_at_address_handler(qwidget_update)),
