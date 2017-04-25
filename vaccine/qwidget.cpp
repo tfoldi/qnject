@@ -47,37 +47,22 @@ namespace {
 
 
 
-        // CLICK ------------------------------------------
-
-//        data_response_t click_qwidget(const Request& r, QObject* obj) {
-//            LOG_SCOPE_FUNCTION(INFO);
-//
-//            auto btn = qobject_cast<QAbstractButton*>(obj);
-//            if (btn != nullptr) {
-//                btn->click();
-//                return json_response(200, std::string("clicked"));
-//            }
-//
-//            return error(404, "Not a button");
-//        }
-
         using namespace brilliant::route;
         using namespace qnject::api;
 
 
-        // handlers that target a QObject by address
-        const auto byAddressHandlers =
-                prefix("by-address", any_of(
-//                        prefix("click", qobject_at_address_handler(click_qwidget)),
-                        prefix("grab", qobject_at_address_handler(qwidgets_grab_image)),
-                        prefix("menu", qobject_at_address_handler(get_menu_tree)),
-                        prefix("trigger",
-                               qobject_at_address_handler(menu_tree_trigger_action)),
-                        get(qobject_at_address_json_handler(qwidget_show)),
-                        post(qobject_at_address_handler(qwidget_update)),
-                        handler(method_not_found)
-                ));
+        template<typename Resolver>
+        decltype(auto) byAddressHandlers(std::string pathPrefix, Resolver resolver) {
+            return prefix(pathPrefix, any_of(
+                    prefix("grab", resolver(qwidgets_grab_image)),
+                    prefix("menu", resolver(get_menu_tree)),
+                    prefix("trigger", resolver(menu_tree_trigger_action)),
+                    get(resolver(json_wrapped_result(qwidget_show))),
+                    post(resolver(qwidget_update)),
+                    handler(method_not_found)
+            ));
 
+        }
 
         // Show the widgets list
         const auto widgetListHandler = get(handler(wrap_json(qwidget_list)));
@@ -86,7 +71,12 @@ namespace {
                 prefix("api",
                        prefix("qwidgets", any_of(
                                leaf(widgetListHandler),
-                               byAddressHandlers,
+
+                               // Do things to widgets only. Should be safe with any input
+                               byAddressHandlers("by-address", [](auto&& fn){ return qobject_at_address_handler(fn); }),
+
+                               // Segfault on bad input, but access everything by address
+                               byAddressHandlers("by-address-unsafe", [](auto&& fn){ return qobject_at_address_handler_unsafe(fn); }),
 
                                // Returns the main menu object(s) of the application
                                prefix("main-menu", handler(wrap_json(qwidgets_get_menubar))),

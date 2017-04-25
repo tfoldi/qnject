@@ -216,6 +216,7 @@ namespace qnject {
         };
 
 
+        // ----------------------------------------
         // Wraps a handler, we need to auto here to keep our sanity.
         template<typename Fn>
         decltype(auto) qobject_handler(Fn fn) {
@@ -229,57 +230,71 @@ namespace qnject {
         // Maps a single URL parameter to a single QObject with the url parameter as address,
         // maps Handler on them and returns the response as JSON.
 
+        // ----------------------------------------
         // Helper to invoke a function on a qobject if it has the specified name
-        template<typename Functor>
-        inline data_response_t with_object_at_address(const String& addrStr, Functor fn) {
-            using namespace brilliant;
-
-#ifndef SAFE_ADDRESSES_ONLY
-
-            void* addr = helpers::stringToAddress(addrStr);
-
-            if (addr == nullptr) {
-                return response::error(404, "Cannot find object at invalid address");
-            }
+        struct with_object_at_address_safe_t {
+            template<typename Functor>
+            data_response_t operator()(const String& addrStr, Functor fn) const {
+                using namespace brilliant;
+                auto addr = (uintptr_t)helpers::stringToAddress(addrStr);
 
 
-            // HERE WE GO. DANGER. DANGER. DANGER.
-            QObject* obj = (QObject*)addr;
-            if (qobject_cast<QObject*>(obj) == nullptr) {
-                return response::error(404, "Cannot cast object at address to QObject");
-            }
-
-            return fn(obj);
-
-
-#else
-
-
-            for (QWidget* child : qApp->allWidgets()) {
-
-                auto thisAddr = address_to_string(child);
-
-                DLOG_F(INFO, "Checking addr: %s == %s", thisAddr.c_str(), address_to_string(child).c_str());
-                // TODO: do proper uintptr_t to uintptr_t comparison here
-                if (child && (addrStr == address_to_string(child))) {
-                    return fn(child);
+                for (QWidget* child : qApp->allWidgets()) {
+                    auto childAddr = (uintptr_t)child;
+                    if (child != nullptr && (addr == childAddr)) {
+                        return fn(child);
+                    }
                 }
+
+                return response::error(404, String("Cannot find object @ ") + addrStr);
             }
-
-            return response::error(404, String("Cannot find object @ ") + addrStr);
-#endif // UNSAFE_ADDRESSES
-        }
+            static const with_object_at_address_safe_t instance;
+        };
 
 
+        // ----------------------------------------
+        // Unsafe version: tries to create a pointer out of a memory address.
+        //
+        // DANGER! DANGER! DANGER! ========================================
+        //
+        // THIS WILL SEGFAULT THE APPLICATION IF THE MEMORY ADDRESSS ISNT VALID.
+        //
+        struct with_object_at_address_unsafe_t {
+            template<typename Functor>
+            data_response_t operator()(const String& addrStr, Functor fn) const {
+                using namespace brilliant;
+
+
+                void* addr = helpers::stringToAddress(addrStr);
+
+                if (addr == nullptr) {
+                    return response::error(404, "Cannot find object at invalid address");
+                }
+
+
+                // HERE WE GO. DANGER. DANGER. DANGER.
+                QObject* obj = (QObject*)addr;
+                if (qobject_cast<QObject*>(obj) == nullptr) {
+                    return response::error(404, "Cannot cast object at address to QObject");
+                }
+
+                return fn(obj);
+            }
+            static const with_object_at_address_unsafe_t instance;
+        };
+
+
+        // ----------------------------------------
         // Wraps a QObject -> Json request
-        template<typename Handler>
+        template<typename Getter, typename Handler>
         struct qobject_by_address_handler_t {
+            Getter getter;
             Handler fn;
 
             bool operator()(const Request& r, String object_address) const {
 
                 DLOG_F(INFO, "Requesting object @ '%s'", object_address.c_str());
-                auto response = with_object_at_address(object_address.c_str(), [&](QObject* obj) {
+                auto response = getter(object_address, [&](QObject* obj) {
                     auto addr = address_to_string(obj);
                     return fn(r, obj);
                 });
@@ -289,13 +304,41 @@ namespace qnject {
         };
 
 
-        // Wraps a handler
-        template<typename Fn>
-        decltype(auto) qobject_at_address_handler(Fn fn) {
-            using namespace brilliant::route;
-            return handler("object-address", qobject_by_address_handler_t<Fn>{fn});
+        template<typename Getter, typename Handler>
+        qobject_by_address_handler_t<Getter, Handler> make_qobject_address_handler(Getter g, Handler h) {
+            return { g, h };
+        }
+
+
+        // ----------------------------------------
+        // Base handler wrapper for objectAtAddress.
+        // This allows to customize the resolver function.
+        template<typename Fn, typename Getter>
+        decltype(auto) qobject_at_address_handler_base(Getter g, Fn fn) {
+            return brilliant::route::handler("0xaddress", make_qobject_address_handler(g,fn));
         };
 
+        // Safe version of getting a widget by address.
+        // This only gets the QWidgets that are in the QApplications allWidgets list.
+        // (So QActions etc. need to be handled differently)
+        template<typename Fn>
+        decltype(auto) qobject_at_address_handler(Fn fn) {
+            return brilliant::route::handler("0xaddress", make_qobject_address_handler(with_object_at_address_safe_t::instance, fn));
+//            return qobject_at_address_handler_base(with_object_at_address, fn);
+        };
+
+
+        // UnSafe version of getting a widget by address.
+        // This only gets the QWidgets that are in the QApplications allWidgets list.
+        // (So QActions etc. need to be handled differently)
+        template<typename Fn>
+        decltype(auto) qobject_at_address_handler_unsafe(Fn fn) {
+            return qobject_at_address_handler_base(with_object_at_address_unsafe_t::instance, fn);
+        };
+
+
+
+        // WRAP FUNCTIONS RETURNING JSON ----------------------------------------
 
         // Wraps a handler that returns a Json object into a handler that returns
         // a data_response_t
@@ -310,6 +353,11 @@ namespace qnject {
                 return wrapErrors([&]() { return json_response(200, fn(args...)); });
             }
         };
+
+        template<typename Fn>
+        json_wrapped_result_t<Fn> json_wrapped_result(Fn fn) {
+            return { fn };
+        }
 
         // Wraps a handler
         template<typename Fn>

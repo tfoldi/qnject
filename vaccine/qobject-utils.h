@@ -50,7 +50,7 @@ namespace qnject {
 
             // we should be safe here  (?)
             uintptr_t addr = std::stoull(addrStr, nullptr, 16);
-            DLOG_F(INFO, "Decoded input address: %s -> %0llx" , addrStr.substr(2).c_str(), addr );
+            DLOG_F(INFO, "Decoded input address: %s -> %zx" , addrStr.substr(2).c_str(), addr );
             return (void*)addr;
 
         }
