@@ -18,10 +18,23 @@ endif ()
 
 ## DEPENDENCIES ################################################################
 
-set(BRILLIANT_REQUEST request.h http-handlers/base.h )
+set(BRILLIANT_REQUEST request.h )
 set(MONGOOSE ../deps/mongoose/mongoose.c ../deps/mongoose/mongoose.h)
 set(LOGURU ../deps/loguru/loguru.hpp)
-set(JSON ../deps/json/json.hpp)
+set(JSON ../deps/json/json.hpp )
+
+set(HANDLERS
+        qobject-utils.h
+        qwidget-json-helpers.h
+
+        http-handlers/base.h
+        http-handlers/qwidgets-list.h
+        http-handlers/qwidgets-show.h
+        http-handlers/qwidgets-update.h
+        http-handlers/qwidgets-grab-image.h
+        http-handlers/menu-tree-get.h
+        http-handlers/menu-tree-trigger-action.h
+        http-handlers/qwidgets-get-menubar.h)
 
 
 # On linux/freebsd/osx we are up for a shared library
@@ -31,6 +44,8 @@ add_library(qnject SHARED
         utils.hpp
         lib_preload/dyld_insert.cpp
 
+        ${HANDLERS}
+
         ${MONGOOSE} ${LOGURU} ${JSON}
         ${BRILLIANT_REQUEST}
 
@@ -38,13 +53,17 @@ add_library(qnject SHARED
         ${COMPILED_RESOURCES}
         )
 
+target_include_directories(qnject
+        PUBLIC ../deps/json
+        PUBLIC ../deps/loguru)
+
 if (MACOSX)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -undefined dynamic_lookup")
 endif (MACOSX)
 
 if (WITH_QT)
     # link with qt libraries
-    target_link_libraries(qnject Qt5::Core Qt5::Widgets ${CMAKE_THREAD_LIBS_INIT})
+    target_link_libraries(qnject Qt5::Core Qt5::Widgets Qt5::Script ${CMAKE_THREAD_LIBS_INIT})
 else (WITH_QT)
     # add libdl (automatically added by qt for qt builds)
     target_link_libraries(qnject ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
