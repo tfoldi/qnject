@@ -1,9 +1,15 @@
 #include "qnject_config.h"
 
 #include <stdio.h>
-#include <unistd.h>
-#include <thread>
+#include "dyld-hooking.h"
 
+#ifndef _MSC_VER
+#include <unistd.h>
+
+#else
+
+#endif
+#include <thread>
 #include "../../deps/loguru/loguru.hpp"
 
 #include "../vaccine.h"
@@ -15,19 +21,23 @@ static std::thread * service_thread;
 void start_thread();
 
 // Initializer.
-__attribute__((constructor))
-  static void initializer(void) {
+  static void dyld_insert_initializer(void) {
     DLOG_F(INFO,"Starting service thread");
     vaccine::state = vaccine::mg_state::INITALIZING;
     service_thread = new std::thread( vaccine::start_thread );
   }
 
 // Finalizer.
-__attribute__((destructor))
-  static void finalizer(void) {
+  static void dyld_insert_finalizer(void) {
     DLOG_F(INFO, "Stopping service thread()");
     vaccine::state = vaccine::mg_state::SHUTDOWN_REQUESTED;
     service_thread->join();
     delete service_thread;
   }
 
+
+
+
+
+
+DLL_INITILAIZER_AND_FINALIZER(dyld_insert_initializer, dyld_insert_finalizer);

@@ -21,15 +21,17 @@ find_package(Threads REQUIRED)
 # Find the Qt package
 find_package(Qt5Core)
 find_package(Qt5Widgets)
-find_package(Qt5Script)
-if(Qt5Core_FOUND AND Qt5Widgets_FOUND AND Qt5Script_FOUND)
-  message("HAVE WO")
+if(Qt5Core_FOUND AND Qt5Widgets_FOUND)
   set(WITH_QT TRUE)
 endif()
 
+
 # We're using xxd to build .h files with static 
 # string (json) contents
-find_program(RESOURCE_COMPILER xxd)
+find_program(RESOURCE_COMPILER_DEFAULT xxd)
+
+set(RESOURCE_COMPILER_DEFAULT "xxd" CACHE STRING "The resource compiler program to use" )
+
 
 # to validate swagger.json file we need the swagger-cli npm package
 # -> if not found, we do validation using the public web services 

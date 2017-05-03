@@ -1,7 +1,10 @@
 #include "qnject_config.h"
 #if HAVE_QT5CORE && HAVE_QT5WIDGETS 
 
+#ifndef _MSC_VER
 #include <dlfcn.h>
+#endif
+
 #include <map>
 #include <vector>
 #include <QApplication>
@@ -45,10 +48,12 @@ namespace vaccine {
   static void (*toggle_check)(QObject*,int, QList<QModelIndex> const&) = nullptr;
   static void (*set_radio_mode)(QObject*,bool) = nullptr;
 
+#ifdef HOOK_TABLEAU_SERVICE
   void set_tableau_hook_ptrs(void) {
     toggle_check = (void(*)(QObject*,int, QList<QModelIndex> const&)) dlsym( RTLD_DEFAULT, "_ZN14CheckListModel11ToggleCheckEiRK5QListI11QModelIndexE");
     set_radio_mode = (void(*)(QObject*,bool)) dlsym( RTLD_DEFAULT, "_ZN14CheckListModel12SetRadioModeEb");
   }
+#endif
 
   template <typename Fn>
   void with_object(const char* objectName, Fn fn) {
@@ -142,9 +147,11 @@ namespace vaccine {
            objectName.c_str());
 
 
-    // set function pointers to call Tableau functions directly
-    if ( toggle_check == nullptr || set_radio_mode == nullptr )
-      set_tableau_hook_ptrs();
+#ifdef HOOK_TABLEAU_SERVICE
+    //// set function pointers to call Tableau functions directly
+    //if ( toggle_check == nullptr || set_radio_mode == nullptr )
+    set_tableau_hook_ptrs();
+#endif
 
     // Distpatch URI handlers in a big fat branch
     if (splitURI[0] == "tableau" && splitURI[1] == "scriptwindow" and objectName != "" ) {
@@ -232,12 +239,13 @@ namespace vaccine {
     send_json(nc,resp,statusCode);
   }
 
+#ifdef HOOK_TABLEAU_SERVICE
   __attribute__((constructor))
     static void initializer(void) {
       DLOG_F(INFO, "Register tableau service");
       vaccine::register_callback("tableau", tableau_handler, NULL);
     }
-
+#endif
 }
 
 #endif // HAVE QT5CORE && QT5WIDGES

@@ -40,8 +40,8 @@ set(HANDLERS
 # On linux/freebsd/osx we are up for a shared library
 add_library(qnject SHARED
         vaccine.cpp vaccine.h
-        echo.cpp
         utils.hpp
+        dyld-hooking.h
         lib_preload/dyld_insert.cpp
 
         ${HANDLERS}
@@ -63,7 +63,7 @@ endif (MACOSX)
 
 if (WITH_QT)
     # link with qt libraries
-    target_link_libraries(qnject Qt5::Core Qt5::Widgets Qt5::Script ${CMAKE_THREAD_LIBS_INIT})
+    target_link_libraries(qnject Qt5::Core Qt5::Widgets ${CMAKE_THREAD_LIBS_INIT})
 else (WITH_QT)
     # add libdl (automatically added by qt for qt builds)
     target_link_libraries(qnject ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})

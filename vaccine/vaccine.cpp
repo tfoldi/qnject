@@ -258,16 +258,19 @@ namespace vaccine {
   }
 
   // waits until vaccine is up and runnig. optional timeout in ms, -1 infinity
-  void wait_until_vaccine_is_running(int usecs)
+  void wait_until_vaccine_is_running(std::chrono::microseconds usecs)
   {
+
     // make sure we're running
-    static const auto poll_sleep = 1000;
+    using namespace std::literals;
+	static const auto poll_sleep = 1000us;
+	
 
     if (vaccine::state > vaccine::mg_state::RUNNING)
       throw std::runtime_error("vaccine already stopped");
 
-    for (auto i = 0; vaccine::state != vaccine::mg_state::RUNNING || i * poll_sleep < usecs || usecs == -1 ; i++)
-      usleep(poll_sleep);
+    for (auto i = 0; vaccine::state != vaccine::mg_state::RUNNING || i * poll_sleep < usecs || usecs == inifiniteWaitTime ; i++)
+		std::this_thread::sleep_for(2min);
 
     if (vaccine::state != vaccine::mg_state::RUNNING)
       throw std::runtime_error("timeout: wait_until_vaccine_is_running");

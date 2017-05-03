@@ -23,6 +23,7 @@
 #include "http-handlers/qwidgets-update.h"
 #include "http-handlers/qwidgets-grab-image.h"
 #include "http-handlers/qwidgets-get-menubar.h"
+#include "dyld-hooking.h"
 
 // REQUEST / RESPONSE ----------------------------------------------------------
 
@@ -120,12 +121,23 @@ namespace vaccine {
 
     }
 
-    __attribute__((constructor))
-    static void initializer(void) {
+
+}
+
+namespace {
+    //__attribute__((constructor))
+    void dyld_initialize(void) {
         DLOG_F(INFO, "Register qwidget service");
-        vaccine::register_callback("qwidgets", qwidget_handler, qwidget_json);
+        vaccine::register_callback("qwidgets", vaccine::qwidget_handler, qwidget_json);
+    }
+
+    //__attribute__((constructor))
+    void dyld_finalize(void) {
+        DLOG_F(INFO, "Unregistering qwidget service");
     }
 
 }
+
+DLL_INITILAIZER_AND_FINALIZER(dyld_initialize, dyld_finalize)
 
 #endif // HAVE QT5CORE && QT5WIDGES

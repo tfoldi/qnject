@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <chrono>
 #include <functional>
 
 #include "../deps/mongoose/mongoose.h"
@@ -49,6 +50,9 @@ namespace vaccine {
   void send_json(struct mg_connection *nc, nlohmann::json & j, int statusCode = 200);
 
   // waits until vaccine is up and runnig. optional timeout in ms, -1 infinity
-  void wait_until_vaccine_is_running(int usecs = 0);
+  void wait_until_vaccine_is_running(std::chrono::microseconds usecs = std::chrono::microseconds(0));
+
+  // The wait time for inifinite waits
+  constexpr auto inifiniteWaitTime = std::chrono::hours(9999);
 };
 

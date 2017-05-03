@@ -14,8 +14,9 @@ using nlohmann::json;
 
 TEST_CASE("QT Widget tests", "[qt]") {
 
+  using namespace std::literals;
   // make sure we're running
-  vaccine::wait_until_vaccine_is_running(10000);
+  vaccine::wait_until_vaccine_is_running(10000us);
 
   SECTION("Get all objects") {
     static const char * s_url_app_properties = "http://127.0.0.1:8000/api/qwidgets";
