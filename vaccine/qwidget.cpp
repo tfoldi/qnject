@@ -124,20 +124,27 @@ namespace vaccine {
 
 }
 
-namespace {
-    //__attribute__((constructor))
-    void dyld_initialize(void) {
-        DLOG_F(INFO, "Register qwidget service");
-        vaccine::register_callback("qwidgets", vaccine::qwidget_handler, qwidget_json);
-    }
+//namespace {
+//    //__attribute__((constructor))
+//    void dyld_initialize(void) {
+//        DLOG_F(INFO, "Register qwidget service");
+//        vaccine::register_callback("qwidgets", vaccine::qwidget_handler, qwidget_json);
+//    }
+//
+//    //__attribute__((constructor))
+//    void dyld_finalize(void) {
+//        DLOG_F(INFO, "Unregistering qwidget service");
+//    }
+//
+//}
+//
 
-    //__attribute__((constructor))
-    void dyld_finalize(void) {
-        DLOG_F(INFO, "Unregistering qwidget service");
-    }
+#define REGISTER_VACCINE_HANDLER(prefix, handler) \
+	namespace prefix { \
+		const auto handlerFn = handler;\
+	}
 
-}
+REGISTER_VACCINE_HANDLER(qwidgets, api::qWidgetPath)
 
-DLL_INITILAIZER_AND_FINALIZER(dyld_initialize, dyld_finalize)
 
 #endif // HAVE QT5CORE && QT5WIDGES

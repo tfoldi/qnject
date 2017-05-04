@@ -12,9 +12,18 @@
 #include "utils.hpp"
 #include "vaccine.h"
 
+#include "request.h"
+#include "http-handlers/base.h"
+
 #define VACCINE_API_PREFIX "/api"
 #define VACCINE_SWAGGER_JSON "/swagger.json"
 
+
+
+// MAKE SURE coctailHandler is defined.
+namespace {
+	const auto handlerChecker = coctailHandler;
+}
 
 // Short helpers for the main HTTP loop
 // TODO: refactor me to something like HTTP_HELPERS
@@ -82,6 +91,78 @@ namespace {
       mg_http_send_error(nc, 500, "Unknwown error (exception)" );
     }
   }
+
+  using brilliant::route::prefix;
+  using brilliant::route::any_of;
+  using brilliant::Request;
+
+  //const auto handlerFn = prefix("api", any_of(
+	 // qwidget
+	
+  //));
+
+
+  template <typename Handler>
+  struct path_handler_t {
+	  const Handler handler;
+	  void operator()(struct mg_connection *nc, int ev, void *ev_data) {
+		  // if not HTTP request, dont care about it for now
+		  if (ev != MG_EV_HTTP_REQUEST) { return; }
+
+		  struct http_message *hm = (struct http_message *) ev_data;
+
+		  // check the validity of the url
+		  if (!is_valid_URI(hm)) {
+			  DLOG_F(WARNING, "URI is not valid");
+			  mg_http_send_error(nc, 204, "No content");
+			  return;
+		  }
+
+		  // check if we are on the API path. This should be safe at this point
+		  std::string uri(hm->uri.p, hm->uri.len);
+
+		  DLOG_F(INFO, "Request arrived %s method %.*s", uri.c_str(), (int)hm->method.len, hm->method.p);
+
+		  // check if the URL is for the swagger json
+		  if (starts_with(uri, PREFIX_VACCINE_SWAGGER_JSON)) {
+			  DLOG_F(INFO, "Downloading " VACCINE_SWAGGER_JSON);
+			  send_json(nc, s_swagger_json, 200);
+			  return;
+		  }
+
+		  // if its not the swagger and not an API call, then serve anything static.
+		  // TODO: check for POST, only GETs should work
+		  if (!starts_with(uri, PREFIX_VACCINE_API)) {
+			  DLOG_F(INFO, "Static serve: %s method %.*s", uri.c_str(), (int)hm->method.len, hm->method.p);
+			  mg_serve_http(nc, hm, s_http_server_opts);
+			  return;
+		  }
+
+		  // Create a Brilliant request for handling
+		  Request r = brilliant::request::fromBody(nc, hm);
+
+		  DLOG_F(INFO, "Serving URI: \"%s %s\" with post data >>>%.*s<<<",
+			  r.req["method"].get<std::string>().c_str(),
+			  r.req["uri"].get<std::string>().c_str(),
+			  (int)hm->body.len,
+			  hm->body.p);
+
+
+
+		  // if we get here then we arent in the qwidget path.
+		  if (!handler(make(r))) {
+			  qnject::api::method_not_found(r);
+		  }
+
+	  }
+  };
+
+
+  template <typename Handler>
+  path_handler_t<Handler> path_handler(Handler h) {
+	  return{ h };
+  }
+
 
 }
 
@@ -209,6 +290,7 @@ namespace vaccine {
       mg_serve_http(nc, hm, s_http_server_opts);
       return;
     }
+
 
     // If we made it this far, we need to dispatch to an API handler
     run_http_handler(s_uri_handlers, nc, ev_data, hm, uri);

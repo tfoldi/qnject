@@ -12,9 +12,18 @@ foreach (INPUT_FILE ${COMPILED_RESOURCES})
     list(APPEND COMPILED_RESOURCES ${OUTPUT_FILE})
 endforeach ()
 
-if (WITH_QT)
-    set(VACCINE_QT_SOURCES qwidget.cpp tableau.cpp)
-endif ()
+
+function(add_vaccine_serum SERUM_NAME PREFIX ROOT_CPP)
+  set(PREFIXED "brilliant::route::prefix(\"${PREFIX}\", ${SERUM_NAME}::handler)")
+
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/serum-${SERUM_NAME}.hpp"
+    "#pragma once\n#include \"${ROOT_CPP}\"\nconst auto ${SERUM_NAME}SerumHandler = ${PREFIXED};"
+
+  )
+
+
+  message("[ SERUM ] Written vaccine serum '${SERUM_NAME}'")
+endfunction()
 
 ## DEPENDENCIES ################################################################
 
@@ -36,10 +45,9 @@ set(HANDLERS
         http-handlers/menu-tree-trigger-action.h
         http-handlers/qwidgets-get-menubar.h)
 
-
-# On linux/freebsd/osx we are up for a shared library
-add_library(qnject SHARED
-        vaccine.cpp vaccine.h
+set(VACCINE_COCTAIL_SOURCES
+        #vaccine.cpp
+        vaccine.h
         utils.hpp
         dyld-hooking.h
         lib_preload/dyld_insert.cpp
@@ -51,7 +59,87 @@ add_library(qnject SHARED
 
         ${VACCINE_QT_SOURCES}
         ${COMPILED_RESOURCES}
-        )
+  )
+
+
+
+
+# -----------------------------
+function(JOIN VALUES GLUE OUTPUT)
+  string (REPLACE ";" "${GLUE}" _TMP_STR "${VALUES}")
+  set (${OUTPUT} "${_TMP_STR}" PARENT_SCOPE)
+endfunction()
+
+
+function(add_vaccine_coctail COCTAIL_NAME 
+    # add the files as the rest ... HANDLER_FILES
+    )
+
+  set(SERUM_HEADERS "#include \"request.h\"\n${ROUTE_ALIASES}\n")
+  set(INGREDIENT_WRAPPERS)
+  # Add each include
+  foreach (INPUT_FILE ${ARGN})
+      get_filename_component(INPUT_FILE_NAME ${INPUT_FILE} NAME NOCACHE)
+      set(FN "${CMAKE_CURRENT_BINARY_DIR}/serum-${INPUT_FILE_NAME}.hpp")
+      list(APPEND SERUM_HEADERS "#include \"${FN}\"\n")
+      list(APPEND INGREDIENT_WRAPPERS ${FN})
+  endforeach ()
+
+  # Add each handler
+  set(VACCINE_COCTAIL_HANDLER)
+  foreach (INPUT_FILE ${ARGN})
+      get_filename_component(INPUT_FILE_NAME ${INPUT_FILE} NAME NOCACHE)
+      list(APPEND VACCINE_COCTAIL_HANDLER "${INPUT_FILE}SerumHandler,")
+  endforeach ()
+
+  JOIN("${SERUM_HEADERS}" "\n" HEADERS_JOINED)
+  JOIN("${VACCINE_COCTAIL_HANDLER}" "\n    " HANDLERS_JOINED)
+
+
+  set(METHOD_NOT_FOUND "    qnject::api::method_not_found")
+  set(VACCINE_COCTAIL_SRC
+    "${HEADERS_JOINED}\n\nconst auto coctailHandler = brilliant::route::prefix(\"api\", brilliant::route::any_of(\n${HANDLERS_JOINED}\n${METHOD_NOT_FOUND}))\n\n#include \"vaccine.cpp\"")
+
+  set(OUTPUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/coctail-recepie-${COCTAIL_NAME}.cpp")
+  file(GENERATE OUTPUT ${OUTPUT_FILE} CONTENT "${VACCINE_COCTAIL_SRC}")
+  message("[ COCTAIL ] Written vaccine coctail '${COCTAIL_NAME}' prescription to: ${OUTPUT_FILE}}")
+
+
+  add_library(${COCTAIL_NAME} SHARED ${ROOT_CPP} ${VACCINE_COCTAIL_SOURCES} ${OUTPUT_FILE} ${INGREDIENT_WRAPPERS})
+
+  target_include_directories( ${COCTAIL_NAME}
+          PUBLIC ../deps/json
+          PUBLIC ../deps/loguru
+          PUBLIC ../deps/mongoose
+          PUBLIC ${Qt5Core_INCLUDE_DIRS}
+          PUBLIC ${Qt5Widgets_INCLUDE_DIRS}
+          )
+
+
+endfunction()
+
+
+
+
+if (WITH_QT)
+  set(VACCINE_QT_SOURCES qwidget.cpp tableau.cpp)
+
+  add_vaccine_serum(qwidgetIngredient "qwidget" qwidget.cpp)
+  add_vaccine_serum(tableauIngredient "tableau" tableau.cpp)
+
+  add_vaccine_coctail(qnjectCoctail qwidgetIngredient tableauIngredient)
+endif ()
+
+
+
+
+# On linux/freebsd/osx we are up for a shared library
+add_library(qnject SHARED ${VACCINE_COCTAIL_SOURCES})
+
+
+
+
+
 
 target_include_directories(qnject
         PUBLIC ../deps/json
@@ -75,5 +163,8 @@ target_link_libraries(qnject_swagger_json qnject)
 install(TARGETS qnject
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib)
+
+
+# TESTS
 
 add_subdirectory(tests)

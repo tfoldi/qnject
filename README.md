@@ -86,4 +86,18 @@ cmake . .. -DCMAKE_PREFIX_PATH=/usr/local/opt/qt5
 make
 ```
 
+## Building on Windows
+
+- You should install a fairly recent Qt (5.6+) via the Qt toolkit
+  installer. This generally goes to `c:\qt`
+  After the install, CMake requires that you set `CMAKE_PREFIX_PATH` to
+  point to your specific Qt version of the toolkit (like
+  `C:/Qt/5.7/msvc2015_64`)
+
+- Building the statically served files requires `xxd` to be present.
+  If CMake cannot find it, set the `RESOURCE_COMPILER` cache variable to
+  point to your installed `xxd`
+
+- 
+
 

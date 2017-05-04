@@ -2,7 +2,9 @@
 
 #include <vector>
 #include <string>
-
+#include "json.hpp"
+#include "loguru.hpp"
+#include "utils.hpp"
 
 namespace brilliant {
 
@@ -23,15 +25,48 @@ namespace brilliant {
 
 
     namespace request {
+		  // TODO: not covered
+		  inline bool is_mg_str_equal(const mg_str & str1, const char * str2)
+		  {
+			return (strncmp(str1.p, str2, str1.len) == 0);
+		  }
+
+		  // TODO: not covered
+		  inline bool is_request_method(http_message * hc, const char * method)
+		  {
+			return is_mg_str_equal(hc->method, method);
+		  }
+
+
+		// get parsed json object from a http PUT/POST data req
+		// TODO: test coverage
+		void parse_request_body(struct http_message *hm, nlohmann::json & req)
+		{
+			req["uri"] = std::string(hm->uri.p, hm->uri.len);
+			req["method"] = std::string(hm->method.p, hm->method.len);
+			req["query"] = std::string(hm->query_string.p, hm->query_string.len);
+
+			if (hm->body.len > 0) {
+				std::string s(hm->body.p, hm->body.len);
+				try {
+					req["body"] = nlohmann::json::parse(s);
+				}
+				catch (std::exception & ex) {
+					DLOG_F(ERROR, "Cannot parse request body: %s", ex.what());
+				}
+			}
+		}
 
 
         // Creates a new request from the given http command
         Request fromBody(struct mg_connection* conn, struct http_message* hm) {
             nlohmann::json req;
             // parse the request
-            vaccine::parse_request_body( hm, req );
+            parse_request_body( hm, req );
             Method method = GET;
-            if (vaccine::is_request_method(hm, "POST")) { method = POST; }
+			if (is_mg_str_equal(hm->method, "POST")) {
+				method = POST;
+			}
             std::string uri = req["uri"];
             return { conn, std::move(req), vaccine::split(uri.c_str(), '/'), method };
         }
