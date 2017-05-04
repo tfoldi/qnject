@@ -43,7 +43,7 @@ using qnject::helpers::object_meta;
 namespace {
 
 
-    namespace api {
+
 
 
 
@@ -65,29 +65,31 @@ namespace {
 
         }
 
-        // Show the widgets list
-        const auto widgetListHandler = get(handler(wrap_json(qwidget_list)));
-
-        const auto qWidgetPath =
-                prefix("api",
-                       prefix("qwidgets", any_of(
-                               leaf(widgetListHandler),
-
-                               // Do things to widgets only. Should be safe with any input
-                               byAddressHandlers("by-address", [](auto&& fn){ return qobject_at_address_handler(fn); }),
-
-                               // Segfault on bad input, but access everything by address
-                               byAddressHandlers("by-address-unsafe", [](auto&& fn){ return qobject_at_address_handler_unsafe(fn); }),
-
-                               // Returns the main menu object(s) of the application
-                               prefix("main-menu", handler(wrap_json(qwidgets_get_menubar))),
-
-                               handler(method_not_found)
-                       )));
-    }
 }
 
+namespace serums {
+	namespace qwidgets {
+		// Show the widgets list
+		const auto widgetListHandler = get(handler(wrap_json(qwidget_list)));
 
+		const auto qWidgetPath =
+			prefix("api",
+				prefix("qwidgets", any_of(
+					leaf(widgetListHandler),
+
+					// Do things to widgets only. Should be safe with any input
+					byAddressHandlers("by-address", [](auto&& fn) { return qobject_at_address_handler(fn); }),
+
+					// Segfault on bad input, but access everything by address
+					byAddressHandlers("by-address-unsafe", [](auto&& fn) { return qobject_at_address_handler_unsafe(fn); }),
+
+					// Returns the main menu object(s) of the application
+					prefix("main-menu", handler(wrap_json(qwidgets_get_menubar))),
+
+					handler(method_not_found)
+				)));
+	}
+}
 
 
 // PUBLIC
@@ -100,10 +102,14 @@ namespace vaccine {
             void* ev_data,
             struct http_message* hm) {
 
+		using qnject::api::method_not_found;
+		using brilliant::request::fromBody;
+
+
 
         using namespace brilliant::route;
 
-        Request r = brilliant::request::fromBody(nc, hm);
+        auto r = fromBody(nc, hm);
 
         DLOG_F(INFO, "Serving URI: \"%s %s\" with post data >>>%.*s<<<",
                r.req["method"].get<std::string>().c_str(),
@@ -112,17 +118,19 @@ namespace vaccine {
                hm->body.p);
 
 
-        auto handled = api::qWidgetPath(make(r));
+		auto handled = serums::qwidgets::qWidgetPath(make(r));
 
         // if we get here then we arent in the qwidget path.
         if (!handled) {
-            api::method_not_found(r);
+            method_not_found(r);
         }
 
     }
 
 
 }
+
+
 
 //namespace {
 //    //__attribute__((constructor))
@@ -139,12 +147,12 @@ namespace vaccine {
 //}
 //
 
-#define REGISTER_VACCINE_HANDLER(prefix, handler) \
-	namespace prefix { \
-		const auto handlerFn = handler;\
-	}
-
-REGISTER_VACCINE_HANDLER(qwidgets, api::qWidgetPath)
-
+//#define REGISTER_VACCINE_HANDLER(prefix, handler) \
+//	namespace prefix { \
+//		const auto handlerFn = handler;\
+//	}
+//
+//REGISTER_VACCINE_HANDLER(qwidgets, api::qWidgetPath)
+//
 
 #endif // HAVE QT5CORE && QT5WIDGES

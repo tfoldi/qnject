@@ -13,16 +13,20 @@ foreach (INPUT_FILE ${COMPILED_RESOURCES})
 endforeach ()
 
 
-function(add_vaccine_serum SERUM_NAME PREFIX ROOT_CPP)
-  set(PREFIXED "brilliant::route::prefix(\"${PREFIX}\", ${SERUM_NAME}::handler)")
+function(add_vaccine_serum SERUM_NAME PREFIX HANDLER_FQN ROOT_CPP)
+  set(PREFIXED "brilliant::route::prefix(\"${PREFIX}\", ${HANDLER_FQN})")
+  set(INGREDIENT_HEADER  "${CMAKE_CURRENT_BINARY_DIR}/serum-${SERUM_NAME}.hpp")
 
-  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/serum-${SERUM_NAME}.hpp"
-    "#pragma once\n#include \"${ROOT_CPP}\"\nconst auto ${SERUM_NAME}SerumHandler = ${PREFIXED};"
+  file(GENERATE 
+		OUTPUT ${INGREDIENT_HEADER}
+		CONTENT "#pragma once\n#include \"${ROOT_CPP}\"\nconst auto ${SERUM_NAME}SerumHandler = ${PREFIXED};"
 
   )
 
+  add_library( ${SERUM_NAME} OBJECT ${INGREDIENT_HEADER} ${ARGN})
 
-  message("[ SERUM ] Written vaccine serum '${SERUM_NAME}'")
+  message("[ SERUM ] Written vaccine serum '${SERUM_NAME} to ${INGREDIENT_HEADER}'")
+  message("                                '${PREFIXED}")
 endfunction()
 
 ## DEPENDENCIES ################################################################
@@ -37,13 +41,14 @@ set(HANDLERS
         qwidget-json-helpers.h
 
         http-handlers/base.h
-        http-handlers/qwidgets-list.h
-        http-handlers/qwidgets-show.h
-        http-handlers/qwidgets-update.h
-        http-handlers/qwidgets-grab-image.h
-        http-handlers/menu-tree-get.h
-        http-handlers/menu-tree-trigger-action.h
-        http-handlers/qwidgets-get-menubar.h)
+#        http-handlers/qwidgets-list.h
+#        http-handlers/qwidgets-show.h
+#        http-handlers/qwidgets-update.h
+#        http-handlers/qwidgets-grab-image.h
+#        http-handlers/menu-tree-get.h
+#        http-handlers/menu-tree-trigger-action.h
+#        http-handlers/qwidgets-get-menubar.h
+		)
 
 set(VACCINE_COCTAIL_SOURCES
         #vaccine.cpp
@@ -68,6 +73,7 @@ set(VACCINE_COCTAIL_SOURCES
 function(JOIN VALUES GLUE OUTPUT)
   string (REPLACE ";" "${GLUE}" _TMP_STR "${VALUES}")
   set (${OUTPUT} "${_TMP_STR}" PARENT_SCOPE)
+
 endfunction()
 
 
@@ -105,29 +111,44 @@ function(add_vaccine_coctail COCTAIL_NAME
   message("[ COCTAIL ] Written vaccine coctail '${COCTAIL_NAME}' prescription to: ${OUTPUT_FILE}}")
 
 
-  add_library(${COCTAIL_NAME} SHARED ${ROOT_CPP} ${VACCINE_COCTAIL_SOURCES} ${OUTPUT_FILE} ${INGREDIENT_WRAPPERS})
+  add_library(${COCTAIL_NAME} SHARED ${VACCINE_COCTAIL_SOURCES} ${OUTPUT_FILE} ${INGREDIENT_WRAPPERS})
 
-  target_include_directories( ${COCTAIL_NAME}
-          PUBLIC ../deps/json
-          PUBLIC ../deps/loguru
-          PUBLIC ../deps/mongoose
-          PUBLIC ${Qt5Core_INCLUDE_DIRS}
-          PUBLIC ${Qt5Widgets_INCLUDE_DIRS}
-          )
+  # Add each handler
+	target_link_libraries(${COCTAIL_NAME} ${ARGN})
 
 
 endfunction()
 
 
+  include_directories( ../deps/json ../deps/loguru ../deps/mongoose ) 
 
 
 if (WITH_QT)
   set(VACCINE_QT_SOURCES qwidget.cpp tableau.cpp)
 
-  add_vaccine_serum(qwidgetIngredient "qwidget" qwidget.cpp)
-  add_vaccine_serum(tableauIngredient "tableau" tableau.cpp)
+  add_vaccine_serum(qwidgetIngredient "qwidget"
+		serums::qwidgets::qWidgetPath qwidget.cpp
+  
+        qobject-utils.h
+        qwidget-json-helpers.h
 
-  add_vaccine_coctail(qnjectCoctail qwidgetIngredient tableauIngredient)
+        http-handlers/base.h
+        http-handlers/qwidgets-list.h
+        http-handlers/qwidgets-show.h
+        http-handlers/qwidgets-update.h
+        http-handlers/qwidgets-grab-image.h
+        http-handlers/menu-tree-get.h
+        http-handlers/menu-tree-trigger-action.h
+        http-handlers/qwidgets-get-menubar.h
+		)
+
+  # add_vaccine_serum(tableauIngredient "tableau" tableau.cpp)
+
+  add_vaccine_coctail(qnjectCoctail qwidgetIngredient 
+		# tableauIngredient
+		)
+
+  include_directories( ${Qt5Core_INCLUDE_DIRS} ${Qt5Widgets_INCLUDE_DIRS} )
 endif ()
 
 
