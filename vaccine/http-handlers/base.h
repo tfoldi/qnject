@@ -280,7 +280,6 @@ namespace qnject {
 
                 return fn(obj);
             }
-            static const with_object_at_address_unsafe_t instance;
         };
 
 
@@ -323,7 +322,7 @@ namespace qnject {
         // (So QActions etc. need to be handled differently)
         template<typename Fn>
         decltype(auto) qobject_at_address_handler(Fn fn) {
-            return brilliant::route::handler("0xaddress", make_qobject_address_handler(with_object_at_address_safe_t::instance, fn));
+			return brilliant::route::handler("0xaddress", make_qobject_address_handler(with_object_at_address_safe_t{}, fn));
 //            return qobject_at_address_handler_base(with_object_at_address, fn);
         };
 
@@ -333,7 +332,7 @@ namespace qnject {
         // (So QActions etc. need to be handled differently)
         template<typename Fn>
         decltype(auto) qobject_at_address_handler_unsafe(Fn fn) {
-            return qobject_at_address_handler_base(with_object_at_address_unsafe_t::instance, fn);
+            return qobject_at_address_handler_base(with_object_at_address_unsafe_t{}, fn);
         };
 
 

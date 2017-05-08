@@ -8,7 +8,8 @@ add_executable(qt_testapp
   unit_qt.cpp 
   ../http_client.cpp
   )
-target_link_libraries(qt_testapp Qt5::Widgets qnject)
+  
+target_link_libraries(qt_testapp qnject ${Qt5Core_LIBRARIES} ${Qt5Widgets_LIBRARIES} )
 
 add_test(NAME 04_qt_testapp
   COMMAND qt_testapp

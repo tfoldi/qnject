@@ -1,10 +1,14 @@
 #include "qnject_config.h"
 
 #if HAVE_QT5CORE && HAVE_QT5WIDGETS
+#if _MSC_VER
+
+// as MSVC defines max as a macro, we undef it here, so loguru can be compiled
+#undef max
+#endif
 
 #include <map>
 #include <vector>
-
 
 #include "../deps/loguru/loguru.hpp"
 #include "../deps/json/json.hpp"

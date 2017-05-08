@@ -14,7 +14,7 @@ endforeach ()
 
 
 function(add_vaccine_serum SERUM_NAME PREFIX HANDLER_FQN ROOT_CPP)
-  set(PREFIXED "brilliant::route::prefix(\"${PREFIX}\", ${HANDLER_FQN})")
+  set(PREFIXED "brilliant::route::prefix(\"${PREFIX}\", ${HANDLER_FQN});")
   set(INGREDIENT_HEADER  "${CMAKE_CURRENT_BINARY_DIR}/serum-${SERUM_NAME}.hpp")
 
   file(GENERATE 
@@ -23,7 +23,10 @@ function(add_vaccine_serum SERUM_NAME PREFIX HANDLER_FQN ROOT_CPP)
 
   )
 
-  add_library( ${SERUM_NAME} OBJECT ${INGREDIENT_HEADER} ${ARGN})
+  add_library( ${SERUM_NAME} ${ROOT_CPP} ${INGREDIENT_HEADER} ${ARGN})
+
+  set_target_properties(${SERUM_NAME} PROPERTIES LINKER_LANGUAGE CXX)
+
 
   message("[ SERUM ] Written vaccine serum '${SERUM_NAME} to ${INGREDIENT_HEADER}'")
   message("                                '${PREFIXED}")
@@ -104,7 +107,7 @@ function(add_vaccine_coctail COCTAIL_NAME
 
   set(METHOD_NOT_FOUND "    qnject::api::method_not_found")
   set(VACCINE_COCTAIL_SRC
-    "${HEADERS_JOINED}\n\nconst auto coctailHandler = brilliant::route::prefix(\"api\", brilliant::route::any_of(\n${HANDLERS_JOINED}\n${METHOD_NOT_FOUND}))\n\n#include \"vaccine.cpp\"")
+    "${HEADERS_JOINED}\n\nconst auto coctailHandler = brilliant::route::prefix(\"api\", brilliant::route::any_of(\n${HANDLERS_JOINED}\n${METHOD_NOT_FOUND}));\n\n#include \"vaccine.cpp\"")
 
   set(OUTPUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/coctail-recepie-${COCTAIL_NAME}.cpp")
   file(GENERATE OUTPUT ${OUTPUT_FILE} CONTENT "${VACCINE_COCTAIL_SRC}")
@@ -144,10 +147,11 @@ if (WITH_QT)
 
   # add_vaccine_serum(tableauIngredient "tableau" tableau.cpp)
 
-  add_vaccine_coctail(qnjectCoctail qwidgetIngredient 
+  add_vaccine_coctail(qnject qwidgetIngredient 
 		# tableauIngredient
 		)
 
+  target_link_libraries(qnject ${Qt5Core_LIBRARIES} ${Qt5Widgets_LIBRARIES})
   include_directories( ${Qt5Core_INCLUDE_DIRS} ${Qt5Widgets_INCLUDE_DIRS} )
 endif ()
 
@@ -155,16 +159,10 @@ endif ()
 
 
 # On linux/freebsd/osx we are up for a shared library
-add_library(qnject SHARED ${VACCINE_COCTAIL_SOURCES})
+#add_library(qnject SHARED ${VACCINE_COCTAIL_SOURCES})
 
 
 
-
-
-
-target_include_directories(qnject
-        PUBLIC ../deps/json
-        PUBLIC ../deps/loguru)
 
 if (MACOSX)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -undefined dynamic_lookup")
