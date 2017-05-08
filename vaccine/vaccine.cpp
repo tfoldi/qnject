@@ -64,6 +64,39 @@ namespace {
   }
 
 
+  // todo: rename me
+  void qwidget_handler(
+	  const std::string& uri,
+	  struct mg_connection* nc,
+	  void* ev_data,
+	  struct http_message* hm) {
+
+	  using qnject::api::method_not_found;
+	  using brilliant::request::fromBody;
+
+
+
+	  using namespace brilliant::route;
+
+	  auto r = fromBody(nc, hm);
+
+	  DLOG_F(INFO, "Serving URI: \"%s %s\" with post data >>>%.*s<<<",
+		  r.req["method"].get<std::string>().c_str(),
+		  uri.c_str(),
+		  (int)hm->body.len,
+		  hm->body.p);
+
+
+	  auto handled = serums::qwidgets::qWidgetPath(make(r));
+
+	  // if we get here then we arent in the qwidget path.
+	  if (!handled) {
+		  method_not_found(r);
+	  }
+
+  }
+
+
   // Helper that wraps runnning a handler with exception wrapping and logging.
   template <typename HandlerMap>
   void run_http_handler(HandlerMap& handlers, struct mg_connection* nc, void* ev_data, struct http_message* hm, const std::string& uri) {
@@ -72,6 +105,9 @@ namespace {
 
     DLOG_SCOPE_F(INFO, "API request: '%.*s %s' => %s",
         (int)hm->method.len, hm->method.p, uri.c_str(), handler.c_str());
+
+	qwidget_handler(uri, nc, ev_data, hm);
+	return;
 
     // no handler? error!
     if (handlers.count(handler) != 1) {
@@ -305,13 +341,15 @@ namespace vaccine {
     struct mg_connection *nc;
     const char * http_port = getenv("VACCINE_HTTP_PORT") == NULL ? s_default_http_port : getenv("VACCINE_HTTP_PORT");
 
+    //DLOG_F(INFO, "Starting httpo thread at %s\n", http_port);
     /* Open listening socket */
     mg_mgr_init(&mgr, NULL);
     nc = mg_bind(&mgr, http_port, ev_handler);
 
     /* handle if we cannot bind that socket */
     if (!nc) {
-      DLOG_F(ERROR, "Cannot bind web service on port %s", http_port);
+      fprintf(stderr, "Cannot bind web service on port %s\n", http_port);
+      //DLOG_F(ERROR, "Cannot bind web service on port %s", http_port);
       mg_mgr_free(&mgr);
       state = mg_state::NOT_RUNNING;
       return;
@@ -328,7 +366,8 @@ namespace vaccine {
 
     /* socket bind, document root set, ready to serve */
     state = mg_state::RUNNING;
-    DLOG_F(INFO, "Starting vaccine HTTP REST API server on port %s", http_port);
+    //DLOG_F(INFO, "Starting vaccine HTTP REST API server on port %s", http_port);
+    printf("Starting vaccine HTTP REST API server on port %s\n", http_port);
 
     /* Run event loop until signal is received */
     while (state == mg_state::RUNNING) {
