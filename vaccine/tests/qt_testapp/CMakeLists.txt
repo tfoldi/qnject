@@ -5,14 +5,15 @@ set(CMAKE_AUTOUIC ON)
 add_executable(qt_testapp 
   main.cpp 
   mainwindow.cpp	mainwindow.h mainwindow.ui 
-  unit_qt.cpp 
-  ../http_client.cpp
+   unit_qt.cpp 
+   ../http_client.cpp
   )
 
   
   
   
-target_link_libraries(qt_testapp qnject ${Qt5Core_LIBRARIES} ${Qt5Widgets_LIBRARIES} )
+#target_link_libraries(qt_testapp  ${Qt5Core_LIBRARIES} ${Qt5Widgets_LIBRARIES} )
+ target_link_libraries(qt_testapp qnject ${Qt5Core_LIBRARIES} ${Qt5Widgets_LIBRARIES} )
 
 add_test(NAME 04_qt_testapp
   COMMAND qt_testapp
@@ -48,10 +49,10 @@ if (WIN32)
     
     add_dlls(qt_testapp "${CMAKE_BINARY_DIR}/vaccine/${MSVC_BUILD_TYPE}/qnject.dll")
     
-    if (MSVC_BUILD_TYPE STREQUAL "Release")
-        add_qt_dlls(qt_testapp Qt5Core Qt5Widgets Qt5Gui)
+    if (MSVC_BUILD_TYPE STREQUAL "Release--")
+        add_qt_dlls(qt_testapp Qt5Core Qt5Widgets Qt5Gui )
     else()
-        add_qt_dlls(qt_testapp Qt5Cored Qt5Widgetsd Qt5Guid)
+        add_qt_dlls(qt_testapp Qt5Cored Qt5Widgetsd Qt5Guid icuin53)
     endif()
 
 endif(WIN32)
