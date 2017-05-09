@@ -88,8 +88,10 @@ make
 
 ## Building on Windows
 
-- You should install a fairly recent Qt (5.6+) via the Qt toolkit
-  installer. This generally goes to `c:\qt`
+- You should install a version of Qt (for example 5.4 for most
+  enterprise stuff) matching the target version of your target
+  application via the Qt toolkit installer. This generally goes to
+  `c:\Qt`
 
   After the install, CMake requires that you set `CMAKE_PREFIX_PATH` to
   point to your specific Qt version of the toolkit (like
