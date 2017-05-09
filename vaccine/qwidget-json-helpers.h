@@ -18,7 +18,7 @@ namespace qnject {
 
         std::string address_to_string(void* ptr) {
             std::stringstream stream;
-            stream << std::hex << ptr << std::dec;
+            stream << "0x" << std::hex << ptr << std::dec;
             return stream.str();
         }
 
