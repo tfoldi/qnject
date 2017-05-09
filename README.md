@@ -123,3 +123,19 @@ make
 cmake -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=TRUE -DCMAKE_PREFIX_PATH="C:\Qt\5.4\msvc2010_opengl" -DRESOURCE_COMPILER="C:\Program Files(x86)\Vim\vim74\xxd.exe"
 ```
 
+
+
+### Injecting on Windows
+
+The easiest way to inject the DLL into the running process in our
+experience is to use [Injector by nefarius](https://github.com/nefarius/Injector).
+
+
+```
+Injector64.exe --process-name enterprise-grade-high-quality-qt-app.exe --module-name vaccine/Release/qnject.dll --inject
+```
+
+
+
+
+
