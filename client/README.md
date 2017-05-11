@@ -24,3 +24,31 @@ Options:
 
 ```
 
+
+
+
+## HTTP endpoints
+
+
+Triggering save and optimize for an already injected Tableau.
+
+```
+http://localhost:5000/triggers/save
+200 - [[{"text": "&Optimize", "result": ["ok"], "address": "0x0000000053469B80"}], [{"text": "&Save", "result": ["ok"], "address": "0x000000000CB2CCD0"}]]
+```
+
+
+
+Triggering injection
+
+```
+http://localhost:5000/triggers/do-inject
+```
+
+
+
+Starting Tableau
+
+```
+http://localhost:5000/triggers/do-inject
+```

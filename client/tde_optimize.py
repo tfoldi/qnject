@@ -79,7 +79,7 @@ def trigger_actions(config, actions):
 # UI --------------------------------------
 
 
-def get_needed_actions(config, actionNames, menus):
+def find_and_trigger_actions(config, actionNames, menus):
     o = []
     for actionName in actionNames:
         actionsFound = find_menu_action(lambda a: a["action"]["text"] == actionName, menus)
@@ -91,40 +91,39 @@ def get_needed_actions(config, actionNames, menus):
 
 
 
-
-@click.command()
-@click.option('--server', default="http://localhost:8000/api", help='The QNject server to connect to')
-@click.argument('actions', nargs=-1)
-def main(actions, server):
-    """ Connect to a QNjects server injected into Tableau Desktop and runs Optimize then Save on a workbook 
-    
-    The 'ACTIONS' are the actions to search for by text (they will be executed in the same order).
-    
-    Examples:
-
-    ./env/bin/python tde_optimize.py --help
-    
-    ./env/bin/python tde_optimize.py
-    
-    ./env/bin/python tde_optimize.py "&Save" --server http://localhost:12345
-            
-    """
-    config = Config(baseUrl=server)
-
-    if len(actions) == 0:
-        actions = ["&Optimize", "&Save"]
-
-
-        # Call the actions
-    res = get_needed_actions(config, actions, get_menu(config))
-
-    # Print results
-    for act in res:
-        for v in act:
-            print("'{}' @ {} = {}".format(v["text"], v["address"], v["result"]))
-
-
 if __name__ == '__main__':
+
+    @click.command()
+    @click.option('--server', default="http://localhost:8000/api", help='The QNject server to connect to')
+    @click.argument('actions', nargs=-1)
+    def main(actions, server):
+        """ Connect to a QNjects server injected into Tableau Desktop and runs Optimize then Save on a workbook 
+        
+        The 'ACTIONS' are the actions to search for by text (they will be executed in the same order).
+        
+        Examples:
+
+        ./env/bin/python tde_optimize.py --help
+        
+        ./env/bin/python tde_optimize.py
+        
+        ./env/bin/python tde_optimize.py "&Save" --server http://localhost:12345
+                
+        """
+        config = Config(baseUrl=server)
+
+        if len(actions) == 0:
+            actions = ["&Optimize", "&Save"]
+
+            # Call the actions
+        res = find_and_trigger_actions(config, actions, get_menu(config))
+
+        # Print results
+        for act in res:
+            for v in act:
+                print("'{}' @ {} = {}".format(v["text"], v["address"], v["result"]))
+
+
     main()
 
 
