@@ -1,10 +1,12 @@
 import tde_optimize
 import json
+import time
 import subprocess
 import re
-from flask import Flask
+from flask import Flask, request
 
-app = Flask(__name__)
+
+# CONFIG --------------------------
 
 injectorConfig = {
     # "injector-cmd": "Injector64.exe",
@@ -18,6 +20,15 @@ tableauConfig = {
     "tableau.exe": "C:\\Program Files\\Tableau\\Tableau 10.2\\bin\\tableau.exe",
 }
 
+# Pre-configure the qnject handler
+baseUrl = "http://localhost:8000/api"
+qnjectConfig = tde_optimize.Config(baseUrl=baseUrl)
+
+
+# APP ---------------------------
+
+
+app = Flask(__name__)
 
 def getInjectorCmd(cfg):
     return [cfg["injector"],
@@ -60,12 +71,8 @@ def start_tableau(cfg, twb):
     # start
     # "C:\Program Files\Tableau\Tableau 10.2\bin\tableau.exe" "c:\tmp\_builds\qnject64\test\packaged_tv.twbx"
 
-# CONFIG --------------------------
 
 
-# Pre-configure the qnject handler
-baseUrl = "http://localhost:8000/api"
-qnjectConfig = tde_optimize.Config(baseUrl=baseUrl)
 
 
 # MAKE SURE WE ARE OK AND CAN BE DEBUGGED REMOTELY
@@ -102,18 +109,67 @@ def trigger_injection():
 
 @app.route("/triggers/start-tableau")
 def trigger_open_tableau():
-    return json.dumps(start_tableau(tableauConfig, "c:\\tmp\\_builds\\qnject64\\test\\packaged_tv.twbx"))
-    # cmd = getInjectorCmd(injectorConfig)
-    # print(cmd)
-    # return json.dumps(subprocess.call(cmd, shell=True, stdout=))
-    # subprocess.call(['Injector64.exe",'
-    #              '--process-name', 'tableau.exe',
-    #              '--module-name', 'vaccine/Release/qnject.dll',
-    #              '--inject'
-    # 'C:\\Temp\\a b c\\Notepad.exe', 'C:\\test.txt'])
-
-
+    fn = request.args.get('file', '')
+    if fn == "":
+        return json.dumps({"error": {"msg": "a 'file' url parameter must be provided."}}), 405
+    else:
+        return json.dumps(start_tableau(tableauConfig, fn))
 # tde_optimize.find_and_trigger_actions()
+
+
+def num(s, default=0):
+    try:
+        return int(s)
+    except ValueError:
+        return default
+
+
+@app.route("/optimize")
+def trigger_optimize():
+    fn = request.args.get('file', '')
+    sleepSeconds = num(request.args.get('sleep', '10'), 10)
+
+
+
+
+
+    if fn == "":
+        return json.dumps({"error": {"msg": "a 'file' url parameter must be provided."}})
+    else:
+
+        print("--> Starting tableau with: {0}".format(fn))
+        res = start_tableau(tableauConfig, fn)
+        # Error checking
+        if "error" in res:
+            return json.dumps(res), 500
+
+
+
+        print("--> Wating for {0} seconds".format(sleepSeconds))
+        time.sleep(sleepSeconds)
+
+
+        print("--> injecting")
+        res = try_injection(injectorConfig)
+        if "error" in res:
+            return json.dumps(res), 500
+
+
+        print("--> Optimize, save and exit")
+        actions = ["&Optimize", "&Save", "E&xit"]
+
+        # Call the actions
+        menu = tde_optimize.get_menu(qnjectConfig)
+        res = tde_optimize.find_and_trigger_actions(qnjectConfig, actions, menu)
+        if "error" in res:
+            return json.dumps(res), 500
+
+        # We should be OK at this point
+        return json.dumps(res), 200
+
+
+
+
 
 
 
