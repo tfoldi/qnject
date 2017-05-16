@@ -222,6 +222,9 @@ namespace vaccine {
     struct mg_connection *nc;
     const char * http_port = getenv("VACCINE_HTTP_PORT") == NULL ? s_default_http_port : getenv("VACCINE_HTTP_PORT");
 
+    if (getenv("VACCINE_LOG_FILE"))
+      loguru::add_file(getenv("VACCINE_LOG_FILE"), loguru::Append, loguru::Verbosity_MAX);
+
     /* Open listening socket */
     mg_mgr_init(&mgr, NULL);
     nc = mg_bind(&mgr, http_port, ev_handler);
